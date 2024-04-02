@@ -1,0 +1,56 @@
+import std::vec::{ Vec3f }
+import std::value::{ Value }
+
+import @objects::object::{ Object }
+import @ray::{ Ray }
+import @hit::{ Hit }
+import @utils::{ vec_from_json }
+
+struct Sphere {
+    center: Vec3f
+    radius: f32
+}
+
+def Sphere::new(center: Vec3f, radius: f32): &Object {
+    let obj = Object::new(Sphere)
+    obj.u.sphere.center = center
+    obj.u.sphere.radius = radius
+    return obj
+}
+
+def Sphere::intersect(&this, ray: &Ray, hit: &Hit): bool {
+    let r = *ray
+    // println(f"[+] Intersecting sphere at {.center} with radius {.radius} with ray {r}")
+    let oc = ray.origin - this.center
+    let a = ray.direction.dot(ray.direction)
+    let b = 2.0 * oc.dot(ray.direction)
+    let c = oc.dot(oc) - this.radius * this.radius
+    let discriminant = b * b - 4.0 * a * c
+    if discriminant < 0.0 {
+        return false
+    }
+
+    let t = (-b - discriminant.sqrt()) / (2.0 * a)
+    if t < 0.0 {
+        return false
+    }
+
+    hit.distance = t
+    hit.normal = (ray.origin + ray.direction * t - .center).normalized()
+    return true
+}
+
+def Sphere::from_json(json: &Value): &Object {
+    let center = if json.contains("center") {
+        yield vec_from_json(json["center"])
+    } else {
+        yield Vec3f(0.0, 0.0, 0.0)
+    }
+    let radius = if json.contains("radius") {
+        yield json["radius"].as_float() as f32
+    } else {
+        yield 1.0
+    }
+    println(f"[+] Creating sphere at {center} with radius {radius}")
+    return Sphere::new(center, radius)
+}

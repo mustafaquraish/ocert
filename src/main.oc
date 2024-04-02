@@ -1,0 +1,75 @@
+import std::fs
+import std::json
+import std::vec::{ Vec3f }
+import std::image::{ Image, Color as ImageColor }
+
+import @matrix::{ Matrix }
+import @scene::{ Scene }
+import @ray::{ Ray }
+import @hit::{ Hit }
+import @color::{ Color }
+
+// vroom vroom
+@compiler c_flag "-O3 -ffast-math -ftree-vectorize -msse2 -mfpmath=sse -flto -march=native"
+
+def shift_args(argc: &i32, argv: &&str): str {
+    if *argc == 0 {
+        println(f"Expected argument but got none")
+        std::exit(1)
+    }
+    let arg = (*argv)[0]
+    (*argv) = (*argv) + 1
+    (*argc) = (*argc) - 1
+    return arg
+}
+
+def trace(scene: &Scene, ray: &Ray): Color {
+    for obj : scene.objects.iter() {
+        let hit: Hit
+        if obj.intersect(ray, &hit) {
+            let c = ((hit.normal + 1.0) / 2.0)
+            return Color(c.x, c.y, c.z)
+        }
+    }
+    return Color(0.0, 0.0, 0.0)
+}
+
+def to_image_color(col: Color): ImageColor {
+    return ImageColor(
+        (col.r.clamp01() * 255.0) as u8,
+        (col.g.clamp01() * 255.0) as u8,
+        (col.b.clamp01() * 255.0) as u8,
+    )
+}
+
+def render(scene: &Scene): &Image {
+    let width = scene.camera.width
+    let height = scene.camera.height
+    let image = Image::new(width, height)
+
+    for let i = 0; i < width; i = i + 1 {
+        for let j = 0; j < height; j = j + 1 {
+            let ray = scene.camera.get_ray(i, j)
+            let color = trace(scene, &ray)
+            image.set(i, j, to_image_color(color))
+        }
+    }
+    // let ray = scene.camera.get_ray(182, 145)
+    // println(`Got ray: {ray}`)
+    // let color = trace(scene, &ray)
+    // println(`Got color: {color}`)
+    return image
+}
+
+def main(argc: i32, argv: &str) {
+    let program = shift_args(&argc, &argv)
+    if argc == 0 {
+        println(f"Usage: {program} <scene file>")
+        std::exit(1)
+    }
+    let scene_file = shift_args(&argc, &argv)
+    let scene_json = json::parse_from_file(scene_file)
+    let scene = Scene::from_json(scene_json)
+    let image = render(scene)
+    // image.save("output.qoi")
+}

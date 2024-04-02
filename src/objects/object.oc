@@ -1,0 +1,65 @@
+import std::value::{ Value }
+
+import @utils::{ color_from_json }
+import @ray::{ Ray }
+import @hit::{ Hit }
+import @color::{ Color }
+import @matrix::{ Matrix }
+
+import .sphere::{ Sphere }
+import .plane::{ Plane }
+import .transformed::{ Transformed }
+
+enum ObjectType {
+    Sphere
+    Plane
+    Transformed
+}
+
+union ObjectUnion {
+    sphere: Sphere
+    transformed: Transformed
+    plane: Plane
+}
+
+struct Object {
+    type: ObjectType
+    u: ObjectUnion
+    color: Color
+}
+
+def Object::new(type: ObjectType): &Object {
+    let obj = std::new<Object>()
+    obj.type = type
+    return obj
+}
+
+def Object::intersect(&this, ray: &Ray, hit: &Hit): bool {
+    let res = match .type {
+        Sphere => .u.sphere.intersect(ray, hit)
+        Transformed => .u.transformed.intersect(ray, hit)
+        Plane => .u.plane.intersect(ray, hit)
+    }
+    if res {
+        hit.object = this
+        hit.position = ray.at(hit.distance)
+    }
+    return res
+}
+
+def Object::from_json(json: &Value): &Object {
+    let type = json["type"].as_str().str()
+    let obj = match type {
+        "sphere" => Sphere::from_json(json)
+        "plane" => Plane::from_json(json)
+        else => std::panic(`{json.span.start}: Unknown object type: {type}`)
+    }
+    if json.contains("transforms") {
+        let transform = Matrix::from_json_list(json["transforms"])
+        obj = Transformed::new(obj, transform)
+    }
+
+    // Materials etc.
+    obj.color = color_from_json(json["color"])
+    return obj
+}

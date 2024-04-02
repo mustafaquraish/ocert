@@ -1,0 +1,189 @@
+import std::vec::{ Vec3f }
+import std::value::{ Value }
+import std::math::{ radians }
+
+import @utils::{ error, vec_from_json, ensure }
+
+// lol this is so bad... need a better formatting system
+[formatting
+    "(\n  %f   %f   %f   %f\n  %f   %f   %f   %f\n  %f   %f   %f   %f\n  %f   %f   %f   %f\n)"
+    "$.d[0][0], $.d[0][1], $.d[0][2], $.d[0][3], $.d[1][0], $.d[1][1], $.d[1][2], $.d[1][3], $.d[2][0], $.d[2][1], $.d[2][2], $.d[2][3], $.d[3][0], $.d[3][1], $.d[3][2], $.d[3][3]"
+]
+struct Matrix {
+    d: [[f32; 4]; 4]
+}
+
+def Matrix::transpose(this): Matrix {
+    let m: Matrix
+    for let i = 0; i < 4; i += 1 {
+        for let j = 0; j < 4; j += 1 {
+            m.d[i][j] = .d[j][i]
+        }
+    }
+    return m
+}
+
+def Matrix::make(
+    d00: f32, d01: f32, d02: f32, d03: f32,
+    d10: f32, d11: f32, d12: f32, d13: f32,
+    d20: f32, d21: f32, d22: f32, d23: f32,
+    d30: f32, d31: f32, d32: f32, d33: f32
+): Matrix {
+    let m: Matrix
+    m.d[0][0] = d00; m.d[0][1] = d01; m.d[0][2] = d02; m.d[0][3] = d03
+    m.d[1][0] = d10; m.d[1][1] = d11; m.d[1][2] = d12; m.d[1][3] = d13
+    m.d[2][0] = d20; m.d[2][1] = d21; m.d[2][2] = d22; m.d[2][3] = d23
+    m.d[3][0] = d30; m.d[3][1] = d31; m.d[3][2] = d32; m.d[3][3] = d33
+    return m
+}
+
+def Matrix::identity(): Matrix => Matrix::make(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0
+)
+
+[operator "*"]
+def Matrix::mul(this, other: Matrix): Matrix {
+    let m: Matrix
+    for let i = 0; i < 4; i += 1 {
+        for let j = 0; j < 4; j += 1 {
+            m.d[i][j] = 0.0
+            for let k = 0; k < 4; k += 1 {
+                m.d[i][j] += .d[i][k] * other.d[k][j]
+            }
+        }
+    }
+    return m
+}
+
+[operator "*"]
+def Matrix::mulv(this, v: Vec3f): Vec3f {
+    let x = v.x * .d[0][0] + v.y * .d[0][1] + v.z * .d[0][2] + .d[0][3]
+    let y = v.x * .d[1][0] + v.y * .d[1][1] + v.z * .d[1][2] + .d[1][3]
+    let z = v.x * .d[2][0] + v.y * .d[2][1] + v.z * .d[2][2] + .d[2][3]
+    return Vec3f(x, y, z)
+}
+
+[operator "%"]
+def Matrix::mulv_no_translation(this, v: Vec3f): Vec3f {
+    let x = v.x * .d[0][0] + v.y * .d[0][1] + v.z * .d[0][2]
+    let y = v.x * .d[1][0] + v.y * .d[1][1] + v.z * .d[1][2]
+    let z = v.x * .d[2][0] + v.y * .d[2][1] + v.z * .d[2][2]
+    return Vec3f(x, y, z)
+}
+
+[operator "*"]
+def Matrix::scale(this, t: f32): Matrix {
+    let m: Matrix
+    for let i = 0; i < 4; i += 1 {
+        for let j = 0; j < 4; j += 1 {
+            m.d[i][j] = .d[i][j] * t
+        }
+    }
+    return m
+}
+
+
+// Source: https://stackoverflow.com/questions/1148309
+def Matrix::invert(&this): Matrix {
+  let inv: Matrix
+
+  inv.d[0][0] =  .d[1][1] * .d[2][2] * .d[3][3] - .d[1][1] * .d[2][3] * .d[3][2] - .d[2][1] * .d[1][2] * .d[3][3] + .d[2][1] * .d[1][3] * .d[3][2] + .d[3][1] * .d[1][2] * .d[2][3] - .d[3][1] * .d[1][3] * .d[2][2]
+  inv.d[1][0] = -.d[1][0] * .d[2][2] * .d[3][3] + .d[1][0] * .d[2][3] * .d[3][2] + .d[2][0] * .d[1][2] * .d[3][3] - .d[2][0] * .d[1][3] * .d[3][2] - .d[3][0] * .d[1][2] * .d[2][3] + .d[3][0] * .d[1][3] * .d[2][2]
+  inv.d[2][0] =  .d[1][0] * .d[2][1] * .d[3][3] - .d[1][0] * .d[2][3] * .d[3][1] - .d[2][0] * .d[1][1] * .d[3][3] + .d[2][0] * .d[1][3] * .d[3][1] + .d[3][0] * .d[1][1] * .d[2][3] - .d[3][0] * .d[1][3] * .d[2][1]
+  inv.d[3][0] = -.d[1][0] * .d[2][1] * .d[3][2] + .d[1][0] * .d[2][2] * .d[3][1] + .d[2][0] * .d[1][1] * .d[3][2] - .d[2][0] * .d[1][2] * .d[3][1] - .d[3][0] * .d[1][1] * .d[2][2] + .d[3][0] * .d[1][2] * .d[2][1]
+  inv.d[0][1] = -.d[0][1] * .d[2][2] * .d[3][3] + .d[0][1] * .d[2][3] * .d[3][2] + .d[2][1] * .d[0][2] * .d[3][3] - .d[2][1] * .d[0][3] * .d[3][2] - .d[3][1] * .d[0][2] * .d[2][3] + .d[3][1] * .d[0][3] * .d[2][2]
+  inv.d[1][1] =  .d[0][0] * .d[2][2] * .d[3][3] - .d[0][0] * .d[2][3] * .d[3][2] - .d[2][0] * .d[0][2] * .d[3][3] + .d[2][0] * .d[0][3] * .d[3][2] + .d[3][0] * .d[0][2] * .d[2][3] - .d[3][0] * .d[0][3] * .d[2][2]
+  inv.d[2][1] = -.d[0][0] * .d[2][1] * .d[3][3] + .d[0][0] * .d[2][3] * .d[3][1] + .d[2][0] * .d[0][1] * .d[3][3] - .d[2][0] * .d[0][3] * .d[3][1] - .d[3][0] * .d[0][1] * .d[2][3] + .d[3][0] * .d[0][3] * .d[2][1]
+  inv.d[3][1] =  .d[0][0] * .d[2][1] * .d[3][2] - .d[0][0] * .d[2][2] * .d[3][1] - .d[2][0] * .d[0][1] * .d[3][2] + .d[2][0] * .d[0][2] * .d[3][1] + .d[3][0] * .d[0][1] * .d[2][2] - .d[3][0] * .d[0][2] * .d[2][1]
+  inv.d[0][2] =  .d[0][1] * .d[1][2] * .d[3][3] - .d[0][1] * .d[1][3] * .d[3][2] - .d[1][1] * .d[0][2] * .d[3][3] + .d[1][1] * .d[0][3] * .d[3][2] + .d[3][1] * .d[0][2] * .d[1][3] - .d[3][1] * .d[0][3] * .d[1][2]
+  inv.d[1][2] = -.d[0][0] * .d[1][2] * .d[3][3] + .d[0][0] * .d[1][3] * .d[3][2] + .d[1][0] * .d[0][2] * .d[3][3] - .d[1][0] * .d[0][3] * .d[3][2] - .d[3][0] * .d[0][2] * .d[1][3] + .d[3][0] * .d[0][3] * .d[1][2]
+  inv.d[2][2] =  .d[0][0] * .d[1][1] * .d[3][3] - .d[0][0] * .d[1][3] * .d[3][1] - .d[1][0] * .d[0][1] * .d[3][3] + .d[1][0] * .d[0][3] * .d[3][1] + .d[3][0] * .d[0][1] * .d[1][3] - .d[3][0] * .d[0][3] * .d[1][1]
+  inv.d[3][2] = -.d[0][0] * .d[1][1] * .d[3][2] + .d[0][0] * .d[1][2] * .d[3][1] + .d[1][0] * .d[0][1] * .d[3][2] - .d[1][0] * .d[0][2] * .d[3][1] - .d[3][0] * .d[0][1] * .d[1][2] + .d[3][0] * .d[0][2] * .d[1][1]
+  inv.d[0][3] = -.d[0][1] * .d[1][2] * .d[2][3] + .d[0][1] * .d[1][3] * .d[2][2] + .d[1][1] * .d[0][2] * .d[2][3] - .d[1][1] * .d[0][3] * .d[2][2] - .d[2][1] * .d[0][2] * .d[1][3] + .d[2][1] * .d[0][3] * .d[1][2]
+  inv.d[1][3] =  .d[0][0] * .d[1][2] * .d[2][3] - .d[0][0] * .d[1][3] * .d[2][2] - .d[1][0] * .d[0][2] * .d[2][3] + .d[1][0] * .d[0][3] * .d[2][2] + .d[2][0] * .d[0][2] * .d[1][3] - .d[2][0] * .d[0][3] * .d[1][2]
+  inv.d[2][3] = -.d[0][0] * .d[1][1] * .d[2][3] + .d[0][0] * .d[1][3] * .d[2][1] + .d[1][0] * .d[0][1] * .d[2][3] - .d[1][0] * .d[0][3] * .d[2][1] - .d[2][0] * .d[0][1] * .d[1][3] + .d[2][0] * .d[0][3] * .d[1][1]
+  inv.d[3][3] =  .d[0][0] * .d[1][1] * .d[2][2] - .d[0][0] * .d[1][2] * .d[2][1] - .d[1][0] * .d[0][1] * .d[2][2] + .d[1][0] * .d[0][2] * .d[2][1] + .d[2][0] * .d[0][1] * .d[1][2] - .d[2][0] * .d[0][2] * .d[1][1]
+
+  let det = .d[0][0] * inv.d[0][0] + .d[0][1] * inv.d[1][0] + .d[0][2] * inv.d[2][0] + .d[0][3] * inv.d[3][0]
+  if det.abs() <= 0.0 return Matrix::identity()
+
+  return inv * (1.0 / det)
+}
+
+def Matrix::for_translate(v: Vec3f): Matrix {
+    let m = Matrix::identity()
+    m.d[0][3] = v.x
+    m.d[1][3] = v.y
+    m.d[2][3] = v.z
+    return m
+}
+
+def Matrix::for_scale(v: Vec3f): Matrix {
+    let m = Matrix::identity()
+    m.d[0][0] = v.x
+    m.d[1][1] = v.y
+    m.d[2][2] = v.z
+    return m
+}
+
+def Matrix::for_rotate_x(angle: f32): Matrix {
+    let m = Matrix::identity()
+    let c = angle.cos()
+    let s = angle.sin()
+    m.d[1][1] = c
+    m.d[1][2] = -s
+    m.d[2][1] = s
+    m.d[2][2] = c
+    return m
+}
+
+def Matrix::for_rotate_y(angle: f32): Matrix {
+    let m = Matrix::identity()
+    let c = angle.cos()
+    let s = angle.sin()
+    m.d[0][0] = c
+    m.d[0][2] = s
+    m.d[2][0] = -s
+    m.d[2][2] = c
+    return m
+}
+
+def Matrix::for_rotate_z(angle: f32): Matrix {
+    let m = Matrix::identity()
+    let c = angle.cos()
+    let s = angle.sin()
+    m.d[0][0] = c
+    m.d[0][1] = -s
+    m.d[1][0] = s
+    m.d[1][1] = c
+    return m
+}
+
+def Matrix::from_json(json: &Value): Matrix {
+    let mp = json.as_dict()
+    ensure(json, mp.size() == 1, "Expected a single key in transformation")
+    let key = mp.items[0].key
+    let val = mp.items[0].value
+    return match key {
+        "rotate_x" => Matrix::for_rotate_x(radians(val.as_float() as f32))
+        "rotate_y" => Matrix::for_rotate_y(radians(val.as_float() as f32))
+        "rotate_z" => Matrix::for_rotate_z(radians(val.as_float() as f32))
+        "translate" => Matrix::for_translate(vec_from_json(val))
+        "scale" => Matrix::for_scale(vec_from_json(val))
+        else => error(
+            json,
+            "Expected one of: rotate_x, rotate_y, rotate_z, translate, scale"
+        )
+    }
+}
+
+def Matrix::from_json_list(json: &Value): Matrix {
+    let m = Matrix::identity()
+    for v : json.as_list().iter() {
+        m = Matrix::from_json(v) * m
+    }
+    return m
+}

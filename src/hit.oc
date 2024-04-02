@@ -1,0 +1,13 @@
+import std::vec::{ Vec3f }
+
+import @objects::object::{ Object }
+
+struct Hit {
+    // Filled in by intersection functions
+    normal: Vec3f
+    distance: f32
+
+    // Filled in by base `Object`
+    position: Vec3f
+    object: &Object
+}

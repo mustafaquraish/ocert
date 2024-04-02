@@ -1,0 +1,26 @@
+import std::vector::{ Vector }
+import std::value::{ Value }
+
+import @objects::object::{ Object }
+import @camera::{ Camera }
+
+struct Scene {
+    objects: &Vector<&Object>
+    camera: &Camera
+}
+
+def Scene::new(): &Scene {
+    let scene = std::new<Scene>()
+    scene.objects = Vector<&Object>::new()
+    return scene
+}
+
+def Scene::from_json(scene_json: &Value): &Scene {
+    let scene = Scene::new()
+    for obj_json : scene_json["objects"].as_list().iter() {
+        scene.objects += Object::from_json(obj_json)
+    }
+
+    scene.camera = Camera::from_json(scene_json["camera"])
+    return scene
+}

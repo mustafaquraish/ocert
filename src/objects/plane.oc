@@ -1,0 +1,32 @@
+import std::vec::{ Vec3f }
+import std::value::{ Value }
+
+import @objects::object::{ Object }
+import @ray::{ Ray }
+import @hit::{ Hit }
+import @utils::{ vec_from_json }
+
+// Canonical plane, needs to be transformed to be useful
+struct Plane {}
+
+def Plane::new(): &Object => Object::new(Plane)
+
+def Plane::intersect(&this, ray: &Ray, hit: &Hit): bool {
+    let t = -ray.origin.z / ray.direction.z
+    if t < 0.0 return false
+
+    let p = ray.at(t)
+    if p.x.abs() > 1.0 or p.y.abs() > 1.0 return false
+
+    hit.distance = t
+    hit.normal = Vec3f(0.0, 0.0, 1.0)
+    if hit.normal.dot(ray.direction) > 0.0 {
+        hit.normal = hit.normal * -1.0
+    }
+    return true
+}
+
+// Planes don't have any properties for now
+def Plane::from_json(json: &Value): &Object {
+    return Plane::new()
+}

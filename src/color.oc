@@ -1,0 +1,56 @@
+
+
+[formatting "Color(%f, %f, %f)" "$.r, $.g, $.b"]
+struct Color {
+    r, g, b: f32
+}
+
+def Color::single(value: f32): Color => Color(value, value, value)
+
+[operator "+"] def Color::add(this, other: Color): Color => Color(.r + other.r, .g + other.g, .b + other.b)
+[operator "-"] def Color::sub(this, other: Color): Color => Color(.r - other.r, .g - other.g, .b - other.b)
+[operator "*"] def Color::mul(this, other: Color): Color => Color(.r * other.r, .g * other.g, .b * other.b)
+[operator "/"] def Color::div(this, other: Color): Color => Color(.r / other.r, .g / other.g, .b / other.b)
+
+[operator "+"] def Color::adds(this, other: f32): Color => Color(.r + other, .g + other, .b + other)
+[operator "-"] def Color::subs(this, other: f32): Color => Color(.r - other, .g - other, .b - other)
+[operator "*"] def Color::muls(this, other: f32): Color => Color(.r * other, .g * other, .b * other)
+[operator "/"] def Color::divs(this, other: f32): Color => Color(.r / other, .g / other, .b / other)
+
+[operator "+"] def Color::addrs(other: f32, this: Color): Color => Color(other + this.r, other + this.g, other + this.b)
+[operator "-"] def Color::subrs(other: f32, this: Color): Color => Color(other - this.r, other - this.g, other - this.b)
+[operator "*"] def Color::mulrs(other: f32, this: Color): Color => Color(other * this.r, other * this.g, other * this.b)
+[operator "/"] def Color::divrs(other: f32, this: Color): Color => Color(other / this.r, other / this.g, other / this.b)
+
+[operator "+="]
+def Color::add_assign(&this, other: Color) {
+    .r += other.r
+    .g += other.g
+    .b += other.b
+}
+
+[operator "-="]
+def Color::sub_assign(&this, other: Color) {
+    .r -= other.r
+    .g -= other.g
+    .b -= other.b
+}
+
+[operator "*="]
+def Color::mul_assign(&this, other: Color) {
+    .r *= other.r
+    .g *= other.g
+    .b *= other.b
+}
+
+[operator "/="]
+def Color::div_assign(&this, other: Color) {
+    .r /= other.r
+    .g /= other.g
+    .b /= other.b
+}
+
+[operator "+="] def Color::add_assigns(&this, other: f32) => .add_assign(Color::single(other))
+[operator "-="] def Color::sub_assigns(&this, other: f32) => .sub_assign(Color::single(other))
+[operator "*="] def Color::mul_assigns(&this, other: f32) => .mul_assign(Color::single(other))
+[operator "/="] def Color::div_assigns(&this, other: f32) => .div_assign(Color::single(other))

@@ -1,0 +1,36 @@
+import std::vec::{ Vec3f }
+import std::value::{ Value }
+
+import @color::{ Color }
+
+[exits]
+def error(json: &Value, msg: str) {
+    println("---------------------------------------------------")
+    println(`{json.span.start}:`)
+    println(`   Error: {msg}`)
+    println("---------------------------------------------------")
+    std::exit(1)
+}
+
+def ensure(json: &Value, cond: bool, msg: str) {
+    if cond then return
+    error(json, msg)
+}
+
+def vec_from_json(json: &Value): Vec3f {
+    ensure(json, json.is(List) and json.as_list().size == 3, "Expected a list of 3 numbers")
+    return Vec3f(
+        x: json[0].as_float() as f32,
+        y: json[1].as_float() as f32,
+        z: json[2].as_float() as f32,
+    )
+}
+
+def color_from_json(json: &Value): Color {
+    ensure(json, json.is(List) and json.as_list().size == 3, "Expected a list of 3 numbers")
+    return Color(
+        r: json[0].as_float() as f32,
+        g: json[1].as_float() as f32,
+        b: json[2].as_float() as f32,
+    )
+}

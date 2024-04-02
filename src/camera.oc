@@ -1,0 +1,88 @@
+import std::vec::{ Vec3f }
+import std::math::{ radians }
+import std::value::{ Value }
+
+import @utils::{ vec_from_json, error }
+import @matrix::{ Matrix }
+import @ray::{ Ray }
+
+struct Camera {
+    position: Vec3f
+    du, dv, wl, wt: f32
+    c2w, w2c: Matrix
+
+    width: u32
+    height: u32
+}
+
+def Camera::new(position: Vec3f, gaze: Vec3f, up: Vec3f, fov: f32, width: u32, height: u32): &Camera {
+    let cam = std::new<Camera>()
+
+    cam.position = position
+    let w = gaze.mults(-1.0).normalized()
+    let u = w.cross(up).normalized()
+    let v = u.cross(w)
+
+    cam.height = height
+    cam.width = width
+
+    let e = position  // for readability
+    cam.c2w = Matrix::make(u.x, v.x, w.x, e.x,
+                           u.y, v.y, w.y, e.y,
+                           u.z, v.z, w.z, e.z,
+                           0.0, 0.0, 0.0, 1.0)
+    cam.w2c = cam.c2w.invert()
+
+    println(f"Camera c2w: {cam.c2w}")
+    println(f"Camera w2c: {cam.w2c}")
+
+    let theta = radians(fov)
+    let ysize = 2.0 * (theta / 2.0).tan()
+    let xsize = (width as f32 / height as f32) * ysize
+
+    cam.wl = -xsize / 2.0
+    cam.wt =  ysize / 2.0
+
+    cam.du =  xsize / (width - 1) as f32
+    cam.dv = -ysize / (height - 1) as f32
+
+    println(f"Camera du: {cam.du}, dv: {cam.dv}, wl: {cam.wl}, wt: {cam.wt}")
+    return cam
+}
+
+def Camera::get_ray(&this, x: u32, y: u32): Ray {
+    let p_ij = Vec3f(.wl + x as f32 * .du,
+                     .wt + y as f32 * .dv,
+                     -1.0)
+    let p = .c2w * p_ij
+    return Ray(p, (p - .position).normalized())
+}
+
+def Camera::from_json(json: &Value): &Camera {
+    let position = vec_from_json(json["position"])
+
+    let gaze = if json.contains("look") {
+        let look = vec_from_json(json["look"])
+        yield look - position
+
+    } else if json.contains("look_at") {
+        let look = vec_from_json(json["look_at"])
+        yield look - position
+
+    } else if json.contains("gaze") {
+        yield vec_from_json(json["gaze"])
+
+    } else {
+        error(json, "Camera must have a 'look_at'/'gaze' field")
+    }
+
+    let up = if json.contains("up") {
+        yield vec_from_json(json["up"])
+    } else {
+        yield Vec3f(0.0, 1.0, 0.0)
+    }
+    let fov = json["fov"].as_float() as f32
+    let width = json["width"].as_int() as u32
+    let height = json["height"].as_int() as u32
+    return Camera::new(position, gaze, up, fov, width, height)
+}
