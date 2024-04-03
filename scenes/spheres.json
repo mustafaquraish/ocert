@@ -1,0 +1,37 @@
+{
+    "objects": [
+        {
+            "type": "sphere",
+            "color": [0.25, 0.25, 0.75],
+            "transforms": [
+                { "scale": [500, 500, 500] },
+                { "rotate_y": 90 },
+                { "translate": [510, 0, 5] }
+            ]
+        },
+        {
+            "type": "sphere",
+            "color": [0.75, 0.25, 0.25],
+            "transforms": [
+                { "scale": [500, 500, 500] },
+                { "rotate_y": -90 },
+                { "translate": [-510, 0, 5] }
+            ]
+        },
+        {
+            "type": "sphere",
+            "color": [0.95, 0.95, 0.95],
+            "transforms": [
+                { "scale": [500, 500, 500] },
+                { "translate": [0, 0, 515] }
+            ]
+        }
+    ],
+    "camera": {
+        "position": [0, 0, -15],
+        "gaze": [0, 0, 1],
+        "fov": 70,
+        "width": 512,
+        "height": 512
+    }
+}

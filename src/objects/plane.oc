@@ -1,5 +1,6 @@
 import std::vec::{ Vec3f }
 import std::value::{ Value }
+import std::random::{ randf32 }
 
 import @objects::object::{ Object }
 import @ray::{ Ray }
@@ -13,7 +14,7 @@ def Plane::new(): &Object => Object::new(Plane)
 
 def Plane::intersect(&this, ray: &Ray, hit: &Hit): bool {
     let t = -ray.origin.z / ray.direction.z
-    if t < 0.0 return false
+    if t < 0.0001 return false
 
     let p = ray.at(t)
     if p.x.abs() > 1.0 or p.y.abs() > 1.0 return false
@@ -24,6 +25,13 @@ def Plane::intersect(&this, ray: &Ray, hit: &Hit): bool {
         hit.normal = hit.normal * -1.0
     }
     return true
+}
+
+def Plane::sample_point(&this, ray: &Ray, pdf: &f32): Vec3f {
+    let x = randf32(ray.rng) * 2.0 - 1.0
+    let y = randf32(ray.rng) * 2.0 - 1.0
+    *pdf = 1.0
+    return Vec3f(x, y, 0.0)
 }
 
 // Planes don't have any properties for now

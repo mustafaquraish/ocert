@@ -1,4 +1,4 @@
-import std::vec::{ Vec3f }
+import std::vec::{ Vec3f, Vec2f }
 import std::value::{ Value }
 
 import @objects::object::{ Object }
@@ -36,7 +36,12 @@ def Sphere::intersect(&this, ray: &Ray, hit: &Hit): bool {
     }
 
     hit.distance = t
-    hit.normal = (ray.origin + ray.direction * t - .center).normalized()
+    hit.position = ray.at(t)
+    hit.normal = (hit.position - .center) / .radius
+    hit.uv = Vec2f(
+        0.5 + f32::atan2(hit.normal.z, hit.normal.x) / (2.0 * std::math::PI),
+        0.5 - f32::asin(hit.normal.y) / std::math::PI
+    )
     return true
 }
 

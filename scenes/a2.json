@@ -1,0 +1,61 @@
+{
+    "objects": [
+        {
+            "type": "sphere",
+            "material": {
+                "type": "reflect",
+                "color": [1.0, 0.25, 0.25]
+            },
+            "transforms": [
+                { "scale": [1.5, 0.75, 0.75] },
+                { "rotate_z": 45 },
+                { "translate": [2, 2.5, 1.5] }
+            ]
+        },
+        {
+            "type": "sphere",
+            "material": {
+                "type": "diffuse",
+                "color": [0.75, 0.95, 0.55]
+            },
+            "transforms": [
+                { "scale": [0.95, 1.65, 0.65] },
+                { "rotate_z": -120 },
+                { "translate": [-2.2, 1.75, 1.35] }
+            ]
+        },
+        {
+            "type": "plane",
+            "material": {
+                "type": "diffuse",
+                "color": [0.55, 0.8, 0.75]
+            },
+            "transforms": [
+                { "scale": [11, 11, 11] },
+                { "rotate_z": 45 },
+                { "rotate_x": 90 },
+                { "translate": [0, -4, 5] }
+            ]
+        },
+        {
+            "type": "plane",
+            "transforms": [
+                { "scale": [0.5, 2.5, 10] },
+                { "rotate_x": 90 },
+                { "translate": [0, 5, 1] }
+            ],
+            "material": {
+                "type": "light",
+                "color": [5, 5, 5]
+            }
+        }
+    ],
+    "camera": {
+        "position": [0, 0, -1],
+        "gaze": [0, 0, 1],
+        "fov": 125,
+        "width": 768,
+        "height": 768,
+        "samples": 10
+    }
+}

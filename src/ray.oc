@@ -1,9 +1,11 @@
 import std::vec::{ Vec3f }
+import std::random::{ RandomState }
 
 [formatting "(%g, %g, %g) -> ( %g, %g, %g)" "$.origin.x, $.origin.y, $.origin.z, $.direction.x, $.direction.y, $.direction.z"]
 struct Ray {
     origin: Vec3f,
     direction: Vec3f
+    rng: &RandomState
 }
 
 def Ray::at(this, t: f32): Vec3f => .origin + t * .direction

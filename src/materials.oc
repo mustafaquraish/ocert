@@ -1,0 +1,78 @@
+import std::value::{ Value }
+import std::vec::{ Vec3f }
+
+import @color::{ Color }
+import @hit::{ Hit }
+import @ray::{ Ray }
+import @texture::{ Texture }
+import @utils::{ error, color_from_json, ensure, random_vec_in_hemisphere }
+
+enum MaterialType {
+    Diffuse
+    Reflect
+    Refract
+    Light
+}
+
+struct Material {
+    type: MaterialType
+    texture: &Texture
+    color: Color
+}
+
+def Material::is_light(&this): bool => .type == Light
+
+def Material::sample_direction(&this, ray: &Ray, hit: &Hit): Vec3f => match .type {
+    Diffuse => random_vec_in_hemisphere(ray, hit.normal),
+    Reflect => ray.direction.reflect(hit.normal),
+    Refract => std::panic("Not implemented Refract in Material::sample_direction")
+    Light => std::panic("Not implemented Light in Material::sample_direction")
+}
+
+def Material::sample_color(&this, hit: &Hit): Color {
+    if .texture? return .texture.sample_color(hit)
+    return .color
+}
+
+def Material::emittance(&this, hit: &Hit): Color => match .type {
+    Light => .sample_color(hit),
+    Diffuse | Reflect | Refract => Color::black()
+}
+
+def Material::is_specular(&this): bool => match .type {
+    Reflect | Refract => true,
+    Diffuse | Light => false
+}
+
+def Material::eval(&this, wi: Vec3f, wo: Vec3f, hit: &Hit): Color => match .type {
+    Diffuse | Light => .sample_color(hit) / std::math::PI,
+    Reflect | Refract => Color::black(),  // Delta distributions
+}
+
+// Returns the color, and updates the next direction inside `hit`
+def Material::sample(&this, ray: &Ray, hit: &Hit): Color {
+    hit.next_dir = .sample_direction(ray, hit)
+    return .sample_color(hit)
+}
+
+def Material::from_json(json: &Value): &Material {
+    json.ensure(Dictionary)
+
+    let mat = std::new<Material>()
+    mat.type = match json["type"].as_str().str() {
+        "diffuse" => Diffuse
+        "reflect" => Reflect
+        "refract" => Refract
+        "light" => Light
+        else => error(json, "Unknown material type")
+    }
+    if json.contains("texture") {
+        mat.texture = Texture::from_json(json["texture"])
+    } else if json.contains("color") {
+        mat.color = color_from_json(json["color"])
+    } else {
+        error(json, "Material must have either `texture` or `color` field")
+    }
+
+    return mat
+}

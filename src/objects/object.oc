@@ -1,10 +1,12 @@
 import std::value::{ Value }
+import std::vec::{ Vec3f }
 
 import @utils::{ color_from_json }
 import @ray::{ Ray }
 import @hit::{ Hit }
 import @color::{ Color }
 import @matrix::{ Matrix }
+import @materials::{ Material }
 
 import .sphere::{ Sphere }
 import .plane::{ Plane }
@@ -25,7 +27,7 @@ union ObjectUnion {
 struct Object {
     type: ObjectType
     u: ObjectUnion
-    color: Color
+    mat: &Material
 }
 
 def Object::new(type: ObjectType): &Object {
@@ -47,6 +49,12 @@ def Object::intersect(&this, ray: &Ray, hit: &Hit): bool {
     return res
 }
 
+def Object::sample_point(&this, ray: &Ray, pdf: &f32): Vec3f => match .type {
+    Plane => .u.plane.sample_point(ray, pdf)
+    Transformed => .u.transformed.sample_point(ray, pdf)
+    else => std::panic("Sampling not supported for this object type")
+}
+
 def Object::from_json(json: &Value): &Object {
     let type = json["type"].as_str().str()
     let obj = match type {
@@ -60,6 +68,6 @@ def Object::from_json(json: &Value): &Object {
     }
 
     // Materials etc.
-    obj.color = color_from_json(json["color"])
+    obj.mat = Material::from_json(json["material"])
     return obj
 }

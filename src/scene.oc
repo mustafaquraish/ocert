@@ -3,24 +3,51 @@ import std::value::{ Value }
 
 import @objects::object::{ Object }
 import @camera::{ Camera }
+import @color::{ Color }
+import @hit::{ Hit }
+import @ray::{ Ray }
+import @utils::{ color_from_json }
 
 struct Scene {
     objects: &Vector<&Object>
+
+    // Note: Lights are also in the objects list, but we keep them
+    // separate here for easier sampling
+    lights: &Vector<&Object>
+
     camera: &Camera
+    background: Color
 }
 
 def Scene::new(): &Scene {
     let scene = std::new<Scene>()
     scene.objects = Vector<&Object>::new()
+    scene.lights = Vector<&Object>::new()
     return scene
 }
 
-def Scene::from_json(scene_json: &Value): &Scene {
+def Scene::intersect(&this, ray: &Ray, hit: &Hit): bool {
+    for obj : .objects.iter() {
+        if obj.intersect(ray, hit) return true
+    }
+    return false
+}
+
+def Scene::from_json(json: &Value): &Scene {
     let scene = Scene::new()
-    for obj_json : scene_json["objects"].as_list().iter() {
-        scene.objects += Object::from_json(obj_json)
+    for obj_json : json["objects"].as_list().iter() {
+        let obj = Object::from_json(obj_json)
+        scene.objects += obj
+        if obj.mat.is_light() {
+            scene.lights += obj
+        }
     }
 
-    scene.camera = Camera::from_json(scene_json["camera"])
+    scene.camera = Camera::from_json(json["camera"])
+    if json.contains("background") {
+        scene.background = color_from_json(json["background"])
+    } else {
+        scene.background = Color::black()
+    }
     return scene
 }

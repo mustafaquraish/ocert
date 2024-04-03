@@ -1,0 +1,31 @@
+@compiler c_include "time.h"
+
+[extern "struct timespec"] struct TimeSpec {
+    tv_sec: i64,
+    tv_nsec: i64,
+}
+[extern] const CLOCK_MONOTONIC: i32
+[extern] def clock_gettime(clock_id: i32, tp: &TimeSpec): i32
+
+// elapsed = (finish.tv_sec - start.tv_sec);
+// elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+
+struct Timer {
+    msg: str,
+    start_time: TimeSpec,
+    end_time: TimeSpec,
+}
+
+def Timer::start(msg: str): Timer {
+    let t: Timer
+    t.msg = msg
+    clock_gettime(CLOCK_MONOTONIC, &t.start_time)
+    return t
+}
+
+def Timer::stop(&this) {
+    clock_gettime(CLOCK_MONOTONIC, &this.end_time)
+    let delta: f64 = (.end_time.tv_sec - .start_time.tv_sec) as f64
+    delta += (.end_time.tv_nsec - .start_time.tv_nsec) as f64 / 1000000000.0f64
+    println(f"[+] {.msg} finished in {delta:0.2f}s")
+}

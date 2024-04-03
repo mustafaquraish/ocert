@@ -1,0 +1,51 @@
+{
+    "objects": [
+        {
+            "type": "sphere",
+            "center": [-0.5, 0, 1],
+            "radius": 0.5,
+            "material": {
+                "type": "diffuse",
+                "color": [1.0, 0.5, 0.8]
+            }
+        },
+        {
+            "type": "sphere",
+            "center": [0.5, 0, 1],
+            "radius": 0.5,
+            "material": {
+                "type": "reflect",
+                "texture": "assets/earth.qoi"
+            }
+        },
+        {
+            "type": "sphere",
+            "center": [0, -100.5, -1],
+            "radius": 100,
+            "material": {
+                "type": "diffuse",
+                "color": [0.0, 1.0, 1.0]
+            }
+        },
+        {
+            "type": "plane",
+            "transforms": [
+                { "scale": [0.5, 2.5, 10] },
+                { "rotate_x": 90 },
+                { "translate": [0, 5, 1] }
+            ],
+            "material": {
+                "type": "light",
+                "color": [12, 12, 12]
+            }
+        }
+    ],
+    "camera": {
+        "position": [0, 0, -1],
+        "gaze": [0, 0, 1],
+        "fov": 50,
+        "width": 3840,
+        "height": 2160,
+        "samples": 10
+    }
+}

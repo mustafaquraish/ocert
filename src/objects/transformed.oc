@@ -9,28 +9,36 @@ import @utils::{ vec_from_json }
 
 struct Transformed {
     object: &Object
+    transform: Matrix
     inv_transform: Matrix
-    inv_transform_transpose: Matrix
+    determinant: f32
 }
 
 def Transformed::new(base: &Object, transform: Matrix): &Object {
     let obj = Object::new(Transformed)
     obj.u.transformed.object = base
     let inv = transform.invert()
+    obj.u.transformed.transform = transform
     obj.u.transformed.inv_transform = inv
-    obj.u.transformed.inv_transform_transpose = inv.transpose()
-    // println(`Creating transformed object: {obj.type}, t: {transform}\ninv: {obj.u.transformed.inv_transform}`)
+    obj.u.transformed.determinant = transform.determinant()
     return obj
 }
 
 def Transformed::intersect(&this, ray: &Ray, hit: &Hit): bool {
     let transformed_ray = Ray(
         .inv_transform * ray.origin,
-        .inv_transform % ray.direction
+        .inv_transform % ray.direction,
+        ray.rng,
     )
     let res = .object.intersect(&transformed_ray, hit)
     if res {
-        hit.normal = (.inv_transform_transpose * hit.normal).normalized()
+        hit.normal = (.inv_transform.transpose() * hit.normal).normalized()
     }
     return res
+}
+
+def Transformed::sample_point(&this, ray: &Ray, pdf: &f32): Vec3f {
+    let p = .object.sample_point(ray, pdf)
+    *pdf /= .determinant
+    return .transform * p
 }

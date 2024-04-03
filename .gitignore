@@ -1,0 +1,8 @@
+*.ppm
+*.qoi
+*.png
+out
+a.out
+*.c
+*.dSYM
+

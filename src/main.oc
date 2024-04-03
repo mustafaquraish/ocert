@@ -2,15 +2,22 @@ import std::fs
 import std::json
 import std::vec::{ Vec3f }
 import std::image::{ Image, Color as ImageColor }
+import std::random::{ randf32, randu32, RandomState }
 
 import @matrix::{ Matrix }
 import @scene::{ Scene }
+import @objects::object::{ Object }
 import @ray::{ Ray }
 import @hit::{ Hit }
+import @timer::{ Timer }
 import @color::{ Color }
 
 // vroom vroom
 @compiler c_flag "-O3 -ffast-math -ftree-vectorize -msse2 -mfpmath=sse -flto -march=native"
+// This is a super-ugly hack to allow us to use C-preprocessor macros
+[extern "#pragma omp parallel for schedule(dynamic, 120)"]
+let OMP_PARALLEL_FOR_DYNAMIC_SCHEDULE: i32
+@compiler c_flag "-Xpreprocessor -fopenmp -lomp -Wno-extra-tokens"
 
 def shift_args(argc: &i32, argv: &&str): str {
     if *argc == 0 {
@@ -23,40 +30,128 @@ def shift_args(argc: &i32, argv: &&str): str {
     return arg
 }
 
-def trace(scene: &Scene, ray: &Ray): Color {
-    for obj : scene.objects.iter() {
-        let hit: Hit
-        if obj.intersect(ray, &hit) {
-            let c = ((hit.normal + 1.0) / 2.0)
-            return Color(c.x, c.y, c.z)
-        }
+const MIN_PDF_LIGHT: f32 = 0.1
+
+def sample_light(scene: &Scene, ray: &Ray, hit: &Hit, sampled_light: &&Object): Color {
+    if scene.lights.is_empty() return Color::black()
+
+    let light = scene.lights[ randu32(ray.rng) % scene.lights.size ]
+    if sampled_light? then *sampled_light = light
+
+    let pdf: f32
+    let light_pos = light.sample_point(ray, &pdf)
+
+    // Vector from intersection pt to lightsource
+    let wi = (light_pos - hit.position).normalized()
+    let shadow_ray = Ray(hit.position, wi, ray.rng)
+
+    let wi_dot_n = wi.dot(hit.normal)
+    if wi_dot_n < 0.0 return Color::black()
+
+    let tmp: Hit
+    if scene.intersect(&shadow_ray, &tmp) and tmp.object == light {
+        let wi_dot_ls_n = wi.dot(tmp.normal)
+        if wi_dot_ls_n > 0.0 return Color::black()
+
+        // FIXME: I don't think this is correct, but we don't appear to use it
+        let wo = shadow_ray.direction * -1.0
+
+        pdf *= (tmp.distance * tmp.distance)
+        pdf /= wi_dot_n * -wi_dot_ls_n
+        pdf /= scene.lights.size as f32
+
+        if pdf < MIN_PDF_LIGHT then pdf = MIN_PDF_LIGHT
+        let res = hit.object.mat.eval(wi, wo, hit) * light.mat.emittance(&tmp) / pdf
+        return res
     }
-    return Color(0.0, 0.0, 0.0)
+
+    // Not visible to the lightsource.
+    return Color::black()
 }
+
+def trace(scene: &Scene, ray: Ray): Color {
+    let acc = Color::white()
+    let sampled_light: &Object = null
+    let L = Color::black()
+
+    for let depth = 0; depth < 30; depth++ {
+
+        let hit: Hit
+        if not scene.intersect(&ray, &hit) break
+        let material = hit.object.mat
+
+        if hit.object != sampled_light {
+            L += acc * material.emittance(&hit)
+        }
+
+        if material.is_light() break
+        sampled_light = null
+
+        if not material.is_specular() {
+            L += acc * sample_light(scene, &ray, &hit, &sampled_light)
+        }
+        // // Non light-sampling
+        // if material.is_light() {
+        //     return acc * material.sample_color(&ray, &hit)
+        // }
+
+        acc *= material.sample(&ray, &hit)
+
+        // Russian roulette:
+        if depth > 3 {
+            let pr = acc.r.max(acc.g).max(acc.b)
+            if randf32(ray.rng) > pr break
+            acc *= 1.0 / pr
+        }
+
+        ray = Ray(
+            hit.position + hit.normal * 0.001,
+            hit.next_dir,
+            ray.rng
+        )
+    }
+    return L
+}
+
+[extern "powf"]
+def f32::pow(this, other: f32): f32
+
+def linear_to_srgb(f: f32): f32 => f.sqrt().clamp01()
 
 def to_image_color(col: Color): ImageColor {
     return ImageColor(
-        (col.r.clamp01() * 255.0) as u8,
-        (col.g.clamp01() * 255.0) as u8,
-        (col.b.clamp01() * 255.0) as u8,
+        (linear_to_srgb(col.r) * 255.0) as u8,
+        (linear_to_srgb(col.g) * 255.0) as u8,
+        (linear_to_srgb(col.b) * 255.0) as u8,
     )
 }
 
 def render(scene: &Scene): &Image {
     let width = scene.camera.width
     let height = scene.camera.height
+    let samples = scene.camera.samples
     let image = Image::new(width, height)
 
-    for let i = 0; i < width; i = i + 1 {
-        for let j = 0; j < height; j = j + 1 {
-            let ray = scene.camera.get_ray(i, j)
-            let color = trace(scene, &ray)
+    println(f"[+] Rendering {width}x{height} image with {samples} samples per pixel")
+    let timer = Timer::start("Rendering")
+
+    OMP_PARALLEL_FOR_DYNAMIC_SCHEDULE
+    for let i = 0; i < width; i++ {
+        let rng = RandomState::make()
+        for let j = 0; j < height; j++ {
+            let color = Color::black()
+            for let s = 0; s < samples; s++ {
+                let ray = scene.camera.get_ray(i, j, &rng)
+                color += trace(scene, ray)
+            }
+            color /= samples as f32
             image.set(i, j, to_image_color(color))
         }
     }
-    // let ray = scene.camera.get_ray(182, 145)
+    timer.stop()
+    // let ray = scene.camera.get_ray(256, 450)
     // println(`Got ray: {ray}`)
-    // let color = trace(scene, &ray)
+    // let color = trace(scene, ray)
     // println(`Got color: {color}`)
     return image
 }
@@ -71,5 +166,5 @@ def main(argc: i32, argv: &str) {
     let scene_json = json::parse_from_file(scene_file)
     let scene = Scene::from_json(scene_json)
     let image = render(scene)
-    // image.save("output.qoi")
+    image.save("output.qoi")
 }

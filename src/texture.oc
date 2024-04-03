@@ -1,0 +1,31 @@
+import std::value::{ Value }
+import std::vec::{ Vec3f }
+import std::image::{ Image }
+
+import @color::{ Color }
+import @hit::{ Hit }
+import @ray::{ Ray }
+import @utils::{ error, color_from_json, ensure, random_vec_in_hemisphere }
+
+struct Texture {
+    img: &Image
+}
+
+def Texture::new(img: &Image): &Texture {
+    let tex = std::new<Texture>()
+    tex.img = img
+    return tex
+}
+
+def Texture::sample_color(&this, hit: &Hit): Color {
+    let u = hit.uv.x.clamp01() * (.img.width - 1) as f32
+    let v = hit.uv.y.clamp01() * (.img.height - 1) as f32
+    return Color::from_img(.img.get_interpolated(u, v))
+}
+
+def Texture::from_json(json: &Value): &Texture {
+    json.ensure(String)
+    let filename = json.as_str().str()
+    let img = Image::load(filename)
+    return Texture::new(img)
+}

@@ -1,7 +1,9 @@
 import std::vec::{ Vec3f }
 import std::value::{ Value }
+import std::random::{ randf32 }
 
 import @color::{ Color }
+import @ray::{ Ray }
 
 [exits]
 def error(json: &Value, msg: str) {
@@ -33,4 +35,19 @@ def color_from_json(json: &Value): Color {
         g: json[1].as_float() as f32,
         b: json[2].as_float() as f32,
     )
+}
+
+def random_vec_in_unit_sphere(ray: &Ray): Vec3f {
+    let u = randf32(ray.rng) * 2.0 - 1.0
+    let theta = randf32(ray.rng) * std::math::TAU
+    let ra = (1.0 - u*u).sqrt()
+    return Vec3f(
+        ra * f32::cos(theta),
+        ra * f32::sin(theta),
+        u
+    )
+}
+
+def random_vec_in_hemisphere(ray: &Ray, n: Vec3f): Vec3f {
+    return (random_vec_in_unit_sphere(ray) + n).normalized()
 }

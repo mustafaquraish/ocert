@@ -1,4 +1,4 @@
-import std::vec::{ Vec3f }
+import std::vec::{ Vec3f, Vec2f }
 
 import @objects::object::{ Object }
 
@@ -6,8 +6,12 @@ struct Hit {
     // Filled in by intersection functions
     normal: Vec3f
     distance: f32
+    uv: Vec2f
 
     // Filled in by base `Object`
     position: Vec3f
     object: &Object
+
+    // Filled in by Material
+    next_dir: Vec3f
 }

@@ -1,4 +1,5 @@
-
+import std::vec::{ Vec3f }
+import std::image::{ Color as ImageColor }
 
 [formatting "Color(%f, %f, %f)" "$.r, $.g, $.b"]
 struct Color {
@@ -6,6 +7,22 @@ struct Color {
 }
 
 def Color::single(value: f32): Color => Color(value, value, value)
+def Color::black(): Color => Color(0.0, 0.0, 0.0)
+def Color::white(): Color => Color(1.0, 1.0, 1.0)
+
+def Color::from_vec(vec: Vec3f): Color => Color(vec.x, vec.y, vec.z)
+def Color::from_img(c: ImageColor): Color => Color(
+    c.r as f32 / 255.0,
+    c.g as f32 / 255.0,
+    c.b as f32 / 255.0
+)
+def Color::to_img(&this): ImageColor => ImageColor(
+    (255.0 * .r) as u8,
+    (255.0 * .g) as u8,
+    (255.0 * .b) as u8
+)
+
+def Color::gamma_corrected(this): Color => Color(.r.sqrt(), .g.sqrt(), .b.sqrt())
 
 [operator "+"] def Color::add(this, other: Color): Color => Color(.r + other.r, .g + other.g, .b + other.b)
 [operator "-"] def Color::sub(this, other: Color): Color => Color(.r - other.r, .g - other.g, .b - other.b)
