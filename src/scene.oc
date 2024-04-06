@@ -1,4 +1,5 @@
 import std::vector::{ Vector }
+import std::vec::{ Vec2f }
 import std::value::{ Value }
 
 import @objects::object::{ Object }
@@ -7,6 +8,7 @@ import @color::{ Color }
 import @hit::{ Hit }
 import @ray::{ Ray }
 import @utils::{ color_from_json }
+import @texture::{ Texture }
 
 struct Scene {
     objects: &Vector<&Object>
@@ -16,7 +18,10 @@ struct Scene {
     lights: &Vector<&Object>
 
     camera: &Camera
+
     background: Color
+    env_map: &Texture
+    env_brightness: f32
 }
 
 def Scene::new(): &Scene {
@@ -26,11 +31,23 @@ def Scene::new(): &Scene {
     return scene
 }
 
-def Scene::intersect(&this, ray: &Ray, hit: &Hit): bool {
-    for obj : .objects.iter() {
-        if obj.intersect(ray, hit) return true
+def Scene::get_background(&this, ray: &Ray): Color {
+    if .env_map? {
+        let uv = Vec2f(
+            (ray.direction.z.atan2(ray.direction.x) / (std::math::TAU) + 0.5),
+            0.5 + ray.direction.y.asin() / std::math::PI
+        )
+        return .env_map.get(uv) * .env_brightness
     }
-    return false
+    return .background
+}
+
+def Scene::intersect(&this, ray: &Ray, hit: &Hit): bool {
+    let hit_something = false
+    for obj : .objects.iter() {
+        if obj.intersect(ray, hit) then hit_something = true
+    }
+    return hit_something
 }
 
 def Scene::from_json(json: &Value): &Scene {
@@ -48,6 +65,15 @@ def Scene::from_json(json: &Value): &Scene {
         scene.background = color_from_json(json["background"])
     } else {
         scene.background = Color::black()
+    }
+
+    if json.contains("env_map") {
+        scene.env_map = Texture::from_json(json["env_map"])
+        if json.contains("env_brightness") {
+            scene.env_brightness = json["env_brightness"].as_float() as f32
+        } else {
+            scene.env_brightness = 1.0
+        }
     }
     return scene
 }

@@ -36,8 +36,8 @@ def Camera::new(position: Vec3f, gaze: Vec3f, up: Vec3f, fov: f32, width: u32, h
                            0.0, 0.0, 0.0, 1.0)
     cam.w2c = cam.c2w.invert()
 
-    println(f"Camera c2w: {cam.c2w}")
-    println(f"Camera w2c: {cam.w2c}")
+    // println(f"Camera c2w: {cam.c2w}")
+    // println(f"Camera w2c: {cam.w2c}")
 
     let theta = radians(fov)
     let ysize = 2.0 * (theta / 2.0).tan()
@@ -57,7 +57,7 @@ def Camera::get_ray(&this, x: u32, y: u32, rng: &RandomState): Ray {
                      .wt + y as f32 * .dv,
                      -1.0)
     let p = .c2w * p_ij
-    return Ray(p, (p - .position).normalized(), rng)
+    return Ray(p, (p - .position).normalized(), max_dist: f32::inf(), rng)
 }
 
 def Camera::from_json(json: &Value): &Camera {

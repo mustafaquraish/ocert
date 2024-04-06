@@ -2,29 +2,56 @@
     "objects": [
         {
             "type": "sphere",
-            "center": [-0.5, 0, 1],
-            "radius": 0.5,
-            "material": {
-                "type": "diffuse",
-                "color": [1.0, 0.5, 0.8]
-            }
-        },
-        {
-            "type": "sphere",
-            "center": [0.5, 0, 1],
-            "radius": 0.5,
-            "material": {
-                "type": "reflect",
-                "texture": "assets/earth.qoi"
-            }
-        },
-        {
-            "type": "sphere",
             "center": [0, -100.5, -1],
             "radius": 100,
             "material": {
                 "type": "diffuse",
                 "color": [0.0, 1.0, 1.0]
+            }
+        },
+        {
+            "type": "sphere",
+            "center": [-0.5, 0, 1],
+            "radius": 0.5,
+            "material": {
+                "type": "diffuse",
+                "color": [1.0, 0.5, 0.8]
+            },
+            "normals": "assets/water-norm.qoi"
+        },
+        // {
+        //     "type": "sphere",
+        //     "center": [0.5, 0, 1],
+        //     "radius": 0.5,
+        //     "material": {
+        //         "type": "diffuse",
+        //         "texture": "assets/earth.qoi"
+        //     }
+        // },
+        // {
+        //     "type": "triangle",
+        //     "vertices": [
+        //         [-0.5, 0, 3],
+        //         [0.5, 0, 3],
+        //         [0, 0.5, 3]
+        //     ],
+        //     "material": {
+        //         "type": "diffuse",
+        //         "color": [0.0, 1.0, 1.0]
+        //     }
+        // },
+        {
+            "type": "mesh",
+            "obj": "assets/teapot_lo.obj",
+            "transforms": [
+                { "scale": [-0.5, 0.5, 0.5] },
+                { "rotate_x": -90 },
+                // { "rotate_y": 45 },
+                { "translate": [0.5, 0, 1] },
+            ],
+            "material": {
+                "type": "diffuse",
+                "texture": "assets/bouncy.qoi"
             }
         },
         {
@@ -40,12 +67,15 @@
             }
         }
     ],
+    // "background": [0.4, 0.4, 0.4],
+    // "env_map": "assets/snow.qoi",
+    // "env_brightness": 2.5,
     "camera": {
         "position": [0, 0, -1],
         "gaze": [0, 0, 1],
         "fov": 50,
-        "width": 3840,
-        "height": 2160,
-        "samples": 10
+        "width": 1280,
+        "height": 720,
+        "samples": 100
     }
 }

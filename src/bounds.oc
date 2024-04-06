@@ -1,0 +1,105 @@
+import std::vec::{ Vec3f, Vec2f }
+import std::value::{ Value }
+
+import @objects::object::{ Object }
+import @ray::{ Ray }
+import @hit::{ Hit }
+import @utils::{ vec_from_json }
+
+
+struct Bounds {
+    min: Vec3f
+    max: Vec3f
+}
+
+def Bounds::empty(): Bounds => Bounds(
+    Vec3f(f32::inf(), f32::inf(), f32::inf()),
+    Vec3f(-f32::inf(), -f32::inf(), -f32::inf())
+)
+
+[operator "+"]
+def Bounds::join(this, other: Bounds): Bounds {
+    let new_min = Vec3f(
+        .min.x.min(other.min.x),
+        .min.y.min(other.min.y),
+        .min.z.min(other.min.z)
+    )
+    let new_max = Vec3f(
+        .max.x.max(other.max.x),
+        .max.y.max(other.max.y),
+        .max.z.max(other.max.z)
+    )
+    return Bounds(new_min, new_max)
+}
+
+[operator "+"]
+def Bounds::add_point(this, vec: Vec3f): Bounds {
+    let new_min = Vec3f(
+        .min.x.min(vec.x),
+        .min.y.min(vec.y),
+        .min.z.min(vec.z)
+    )
+    let new_max = Vec3f(
+        .max.x.max(vec.x),
+        .max.y.max(vec.y),
+        .max.z.max(vec.z)
+    )
+    return Bounds(new_min, new_max)
+}
+
+[operator "+="]
+def Bounds::join_assign(&this, other: Bounds) => *this = this.join(other)
+
+def Bounds::intersect(&this, ray: &Ray, t1: &f32, t2: &f32, inv_d: &Vec3f): bool {
+    let tmin = -f32::inf()
+    let tmax = f32::inf()
+
+    // Refine using slabs along each axis
+    {
+        let tmin_ = (.min.x - ray.origin.x) * inv_d.x
+        let tmax_ = (.max.x - ray.origin.x) * inv_d.x
+        if (tmin_ > tmax_) { let tmp = tmin_; tmin_ = tmax_; tmax_ = tmp; }
+        if (tmin > tmax_ or tmin_ > tmax) return false
+        if tmin_ > tmin then tmin = tmin_
+        if tmax_ < tmax then tmax = tmax_
+    }
+    {
+        let tmin_ = (.min.y - ray.origin.y) * inv_d.y
+        let tmax_ = (.max.y - ray.origin.y) * inv_d.y
+        if (tmin_ > tmax_) { let tmp = tmin_; tmin_ = tmax_; tmax_ = tmp; }
+        if (tmin > tmax_ or tmin_ > tmax) return false
+        if tmin_ > tmin then tmin = tmin_
+        if tmax_ < tmax then tmax = tmax_
+    }
+    {
+        let tmin_ = (.min.z - ray.origin.z) * inv_d.z
+        let tmax_ = (.max.z - ray.origin.z) * inv_d.z
+        if (tmin_ > tmax_) { let tmp = tmin_; tmin_ = tmax_; tmax_ = tmp; }
+        if (tmin > tmax_ or tmin_ > tmax) return false
+        if tmin_ > tmin then tmin = tmin_
+        if tmax_ < tmax then tmax = tmax_
+    }
+
+    if tmin > ray.max_dist then return false;
+    if tmin < 0.0001 and tmax < 0.0001 then return false;
+    if tmin < 0.0001 then tmin = 0.0
+
+    if t1? then *t1 = tmin;
+    if t2? then *t2 = tmax;
+    return true;
+}
+
+def Bounds::offset(&this, p: Vec3f): Vec3f {
+    let t = p - .min
+    if .max.x > .min.x then t.x /= .max.x - .min.x
+    if .max.y > .min.y then t.y /= .max.y - .min.y
+    if .max.z > .min.z then t.z /= .max.z - .min.z
+    return t
+}
+
+def Bounds::centroid(this): Vec3f => (.min + .max) / 2.0
+
+def Bounds::area(this): f32 {
+    let d = .max - .min
+    return 2.0 * (d.x * d.y + d.x * d.z + d.y * d.z)
+}

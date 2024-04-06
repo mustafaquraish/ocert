@@ -16,11 +16,13 @@ def Color::from_img(c: ImageColor): Color => Color(
     c.g as f32 / 255.0,
     c.b as f32 / 255.0
 )
-def Color::to_img(&this): ImageColor => ImageColor(
+def Color::to_img(this): ImageColor => ImageColor(
     (255.0 * .r) as u8,
     (255.0 * .g) as u8,
     (255.0 * .b) as u8
 )
+
+def Color::vec(this): Vec3f => Vec3f(.r, .g, .b)
 
 def Color::gamma_corrected(this): Color => Color(.r.sqrt(), .g.sqrt(), .b.sqrt())
 

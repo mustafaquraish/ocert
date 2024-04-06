@@ -1,0 +1,310 @@
+import std::vec::{ Vec3f, Vec2f }
+import std::vector::{ Vector }
+import std::sort::{ sort_by }
+
+import @bounds::{ Bounds }
+import @ray::{ Ray }
+import @timer::{ Timer }
+import @hit::{ Hit }
+import @objects::object::{ Object }
+
+
+struct BVHTree<T> {
+    bounds: Bounds,
+    child: T
+    left: &BVHTree<T>
+    right: &BVHTree<T>
+    is_child: bool
+}
+
+def BVHTree::free(&this) {
+    if not .is_child {
+        .left.free()
+        .right.free()
+    }
+}
+
+def max_axis(v: Vec3f): u32 {
+    let axis = 0;
+    let max = v.x;
+    if v.y > max then { axis = 1; max = v.y; }
+    if v.z > max then { axis = 2; }
+    return axis;
+}
+
+def get_index(v: Vec3f, axis: u32): f32 {
+    if axis == 0 { return v.x; }
+    if axis == 1 { return v.y; }
+    return v.z;
+}
+
+// FIXME: Hacky global variable lol
+let compare_axis: u32 = 0
+let min_bucket: u32 = 0
+let bounds: Bounds
+
+def BVHTree::compare_equal(a: T, b: T): i8 {
+    let ka = get_index(a.bounds.min + a.bounds.max, compare_axis)
+    let kb = get_index(b.bounds.min + b.bounds.max, compare_axis)
+    return ka.compare(kb)
+}
+
+def BVHTree::compare_sah_key(p: T): u32 {
+    let off = bounds.offset(p.bounds.centroid())
+    let bucket = (NUM_BUCKETS as f32 * off[compare_axis]) as u32
+    if (bucket == NUM_BUCKETS) bucket = NUM_BUCKETS - 1
+    return bucket
+}
+
+def BVHTree::compare_sah(a: T, b: T): i8 {
+    let ka = BVHTree<T>::compare_sah_key(a)
+    let kb = BVHTree<T>::compare_sah_key(b)
+    return ka.compare(kb)
+}
+
+def BVHTree::split_equal(objects: &Vector<T>, start: u32, end: u32, bounds: Bounds): u32 {
+    let mid = (start + end) / 2
+    sort_by<T>(objects.data + start, end - start, BVHTree<T>::compare_equal)
+    return mid
+}
+
+const NUM_BUCKETS: u32 = 12
+
+struct Bucket {
+    count: u32,
+    bounds: Bounds
+}
+
+def BVHTree::split_SAH(objects: &Vector<T>, start: u32, end: u32, _bounds: Bounds): u32 {
+    let buckets: [Bucket; NUM_BUCKETS]
+
+    bounds = _bounds
+    for let i = start; i < end; i++ {
+        let b = (NUM_BUCKETS as f32 * bounds.offset(objects[i].bounds.centroid())[compare_axis]) as u32
+        if (b == NUM_BUCKETS) b = NUM_BUCKETS - 1
+        buckets[b].count += 1
+        buckets[b].bounds = buckets[b].bounds.join(objects[i].bounds)
+    }
+
+    let cost: [f32; NUM_BUCKETS - 1]
+    for let i = 0; i < NUM_BUCKETS - 1; ++i {
+        let b0 = Bounds::empty()
+        let b1 = Bounds::empty()
+        let c0 = 0
+        let c1 = 0
+        for let j = 0; j <= i; ++j {
+            b0 = b0.join(buckets[j].bounds)
+            c0 += buckets[j].count;
+        }
+        for let j = i + 1; j < NUM_BUCKETS; ++j {
+            b1 = b1.join(buckets[j].bounds)
+            c1 += buckets[j].count;
+        }
+        cost[i] = 0.125 + (c0 as f32 * b0.area() + c1 as f32 * b1.area()) / bounds.area();
+    }
+
+    let _min_bucket = 0;
+    for let i = 1; i < NUM_BUCKETS - 1; ++i {
+        if (cost[i] < cost[_min_bucket]) {
+            _min_bucket = i;
+        }
+    }
+    min_bucket = _min_bucket
+
+
+    sort_by<T>(objects.data + start, end - start, BVHTree<T>::compare_sah)
+    let mid = start
+    for let i = start; i < end; ++i {
+        if BVHTree<T>::compare_sah_key(objects[i]) <= min_bucket {
+            let tmp = objects[i]
+            objects[i] = objects[mid]
+            objects[mid] = tmp
+            mid += 1
+        }
+    }
+    // auto pmid = std::partition(&prims[start], &prims[end],
+    //                             [=](const Primitive* p) {
+    //                                 Vec3 off = bounds.offset(centroid(p->bounds));
+    //                                 int bucket = nBuckets * off[dim];
+    //                                 if (bucket == nBuckets) bucket = nBuckets - 1;
+    //                                 return bucket <= minBucket;
+    //                             });
+    // int mid = pmid - &prims[0];
+
+    // TODO: this is bad, but currently no support for multiple objects in node
+    if (mid == start or mid == end) 
+        mid = BVHTree<T>::split_equal(objects, start, end, bounds)
+    
+    return mid;
+}
+
+def BVHTree::create_with_bounds(objects: &Vector<T>, start: u32, end: u32): &BVHTree<T> {
+    let node = std::new<BVHTree<T>>()
+
+    let bounds = Bounds::empty()
+    for let i = start; i < end; i++ {
+        bounds += objects[i].bounds
+    }
+    node.bounds = bounds
+
+    if end - start == 1 {
+        node.child = objects[start]
+        node.is_child = true
+        return node
+    }
+
+    // Set hacky global variable
+    compare_axis = max_axis(bounds.max - bounds.min)
+    // let mid = BVHTree<T>::split_equal(objects, start, end, bounds)
+    let mid = BVHTree<T>::split_SAH(objects, start, end, bounds)
+
+    node.left = BVHTree<T>::create_with_bounds(objects, start, mid)
+    node.right = BVHTree<T>::create_with_bounds(objects, mid, end)
+    node.is_child = false
+    return node
+}
+
+def BVHTree::create(objects: &Vector<T>): &BVHTree<T> {
+    let timer = Timer::start(`Creating BVH with {objects.size} objects`)
+    let result = BVHTree<T>::create_with_bounds(objects, 0, objects.size)
+    timer.stop()
+    return result
+}
+
+struct LinearNode {
+    bounds: Bounds
+    // NOTE: For leaf nodes, this is the object index
+    // For internal nodes, this is the offset to the 2nd child
+    // (the first child is always the next node)
+    offset: u32
+    is_child: bool   // 0 for internal nodes
+}
+
+struct BVH<T> {
+    objects: &Vector<T>
+    nodes: &Vector<LinearNode>
+    tree: &BVHTree<T>
+}
+
+def BVH::flatten(&this, node: &BVHTree<T>): u32 {
+    let cur = .nodes.size
+    let lnode: LinearNode
+    lnode.bounds = node.bounds
+    lnode.is_child = node.is_child
+    .nodes.push(lnode)
+
+    if node.is_child {
+        .nodes.data[cur].offset = .objects.size
+        .objects.push(node.child)
+    } else {
+        .flatten(node.left)
+        .nodes.data[cur].offset = .flatten(node.right)
+    }
+
+    return cur
+}
+
+
+def BVH::create(objects: &Vector<T>): &BVH<T> {
+    let tree = BVHTree<T>::create(objects)
+    let bvh = std::new<BVH<T>>()
+    bvh.objects = Vector<T>::new()
+    bvh.nodes = Vector<LinearNode>::new()
+    bvh.flatten(tree)
+    bvh.tree = tree
+    // tree.free()
+    println(`[+] BVH has {bvh.nodes.size} nodes and {bvh.objects.size} objects`)
+    return bvh
+}
+
+def BVHTree::intersect(&this, ray: &Ray, hit: &Hit): bool {
+    // if .is_child {
+    //     if .child.intersect(ray, hit) {
+    //         ray.max_dist = hit.distance
+    //         return true
+    //     }
+    //     return false
+    // }
+
+    // if not .bounds.intersect(ray) return false
+    // let res = false
+    // if .left.intersect(ray, hit) then res = true
+    // if .right.intersect(ray, hit) then res = true
+    // return res
+
+    // let a1: f32; let a2: f32
+    // let hit_a = .bounds.intersect(ray, &a1, &a2)
+
+    // let b1: f32; let b2: f32
+    // let hit_b = .bounds.intersect(ray, &b1, &b2)
+
+    // if not hit_a and not hit_b return false
+    // if not hit_a return .right.intersect(ray, hit)
+    // if not hit_b return .left.intersect(ray, hit)
+
+    // let hit_something = false
+    // if a1 < b1 {
+    //     if .left.intersect(ray, hit) then hit_something = true
+    //     if b1 < ray.max_dist and .right.intersect(ray, hit) then hit_something = true
+
+    // } else {
+    //     if .right.intersect(ray, hit) then hit_something = true
+    //     if a1 < ray.max_dist and .left.intersect(ray, hit) then hit_something = true
+
+    // }
+    return false
+}
+
+def BVH::intersect(&this, ray: &Ray, hit: &Hit): bool {
+    let stack: [u32; 128]
+    let stack_idx = 0
+    stack[stack_idx++] = 0
+
+    let inv_d = 1.0 / ray.direction
+
+    let hit_something = false
+    while stack_idx > 0 {
+        let idx = stack[--stack_idx]
+        let cur = &.nodes.data[idx]
+
+        if cur.is_child {
+            let obj = .objects.data[cur.offset]
+            if obj.intersect(ray, hit) {
+                ray.max_dist = hit.distance
+                hit_something = true
+            }
+            continue
+        }
+
+        let a = idx + 1
+        let b = cur.offset
+
+        let o1: f32; let o2: f32
+        if not cur.bounds.intersect(ray, &o1, &o2, &inv_d) continue
+        stack[stack_idx++] = b
+        stack[stack_idx++] = a
+
+
+        // let a1: f32; let a2: f32
+        // let hit_a = .nodes.data[a].bounds.intersect(ray, &a1, &a2)
+
+        // let b1: f32; let b2: f32
+        // let hit_b = .nodes.data[b].bounds.intersect(ray, &b1, &b2)
+
+        // if not hit_a and not hit_b continue
+        // if not hit_a { stack[stack_idx++] = b; continue; }
+        // if not hit_b { stack[stack_idx++] = a; continue; }
+
+        // if a1 >= b1 {
+        //     stack[stack_idx++] = b
+        //     stack[stack_idx++] = a
+
+        // } else {
+        //     stack[stack_idx++] = b
+        //     stack[stack_idx++] = a
+        // }
+    }
+
+    return hit_something
+}
+

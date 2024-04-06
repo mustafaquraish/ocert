@@ -1,0 +1,43 @@
+import std::vec::{ Vec3f, Vec2f }
+import std::value::{ Value }
+import std::vector::{ Vector }
+
+import @objects::object::{ Object }
+import @objects::triangle::{ Triangle }
+import @ray::{ Ray }
+import @hit::{ Hit }
+import @utils::{ vec_from_json }
+import @bvh::{ BVH }
+import @wavefront_obj
+
+struct Mesh {
+    triangles: &Vector<&Triangle>
+    bvh: &BVH<&Triangle>
+}
+
+def Mesh::new(triangles: &Vector<&Triangle>): &Object {
+    let obj = Object::new(Mesh)
+    obj.u.mesh.triangles = triangles
+    obj.u.mesh.bvh = BVH<&Triangle>::create(triangles)
+    return obj
+}
+
+def Mesh::intersect(&this, ray: &Ray, hit: &Hit): bool {
+    return .bvh.intersect(ray, hit)
+    // return .bvh.intersect_recurse(ray, hit)
+    // let hit_something = false
+    // for let i = 0; i < .triangles.size; i++ {
+    //     let tri = .triangles.data[i]
+    //     if tri.intersect(ray, hit) {
+    //         ray.max_dist = hit.distance
+    //         hit_something = true
+    //     }
+    // }
+    // return hit_something
+}
+
+def Mesh::from_json(json: &Value): &Object {
+    let filename = json["obj"].as_str().str()
+    let triangles = wavefront_obj::parse(filename)
+    return Mesh::new(triangles)
+}

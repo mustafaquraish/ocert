@@ -1,20 +1,25 @@
 import std::value::{ Value }
 import std::vec::{ Vec3f }
 
-import @utils::{ color_from_json }
+import @utils::{ color_from_json, align_to }
 import @ray::{ Ray }
 import @hit::{ Hit }
 import @color::{ Color }
 import @matrix::{ Matrix }
 import @materials::{ Material }
+import @texture::{ Texture }
 
 import .sphere::{ Sphere }
 import .plane::{ Plane }
+import .triangle::{ Triangle }
+import .mesh::{ Mesh }
 import .transformed::{ Transformed }
 
 enum ObjectType {
     Sphere
     Plane
+    Triangle
+    Mesh
     Transformed
 }
 
@@ -22,12 +27,15 @@ union ObjectUnion {
     sphere: Sphere
     transformed: Transformed
     plane: Plane
+    tri: Triangle
+    mesh: Mesh
 }
 
 struct Object {
     type: ObjectType
     u: ObjectUnion
     mat: &Material
+    normal_map: &Texture
 }
 
 def Object::new(type: ObjectType): &Object {
@@ -41,10 +49,19 @@ def Object::intersect(&this, ray: &Ray, hit: &Hit): bool {
         Sphere => .u.sphere.intersect(ray, hit)
         Transformed => .u.transformed.intersect(ray, hit)
         Plane => .u.plane.intersect(ray, hit)
+        Triangle => .u.tri.intersect(ray, hit)
+        Mesh => .u.mesh.intersect(ray, hit)
     }
     if res {
         hit.object = this
         hit.position = ray.at(hit.distance)
+        ray.max_dist = hit.distance
+
+        if .normal_map? {
+            let n = .normal_map.get(hit.uv).vec() * 2.0 - 1.0
+            let new_n = align_to(n, hit.normal)
+            hit.normal = new_n.normalized()
+        }
     }
     return res
 }
@@ -60,11 +77,16 @@ def Object::from_json(json: &Value): &Object {
     let obj = match type {
         "sphere" => Sphere::from_json(json)
         "plane" => Plane::from_json(json)
+        "triangle" => Triangle::from_json(json)
+        "mesh" => Mesh::from_json(json)
         else => std::panic(`{json.span.start}: Unknown object type: {type}`)
     }
     if json.contains("transforms") {
         let transform = Matrix::from_json_list(json["transforms"])
         obj = Transformed::new(obj, transform)
+    }
+    if json.contains("normals") {
+        obj.normal_map = Texture::from_json(json["normals"])
     }
 
     // Materials etc.

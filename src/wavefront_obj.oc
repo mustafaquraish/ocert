@@ -1,0 +1,132 @@
+import std::fs
+import std::vector::{ Vector }
+import std::vec::{ Vec3f, Vec2f }
+import std::sv::{ SV }
+
+import @bounds::{ Bounds }
+import @objects::triangle::{ Triangle }
+
+struct Vertex {
+    // 0 values are invalid, and mean that the vertex doesn't have that attribute
+    position: u32
+    normal: u32
+    texture: u32
+}
+
+def get_vertex_from_part(part: SV): Vertex {
+    let vertex: Vertex
+    let i = 0
+    for p : part.split_str("/") {
+        let val = p.chop_u32()
+        match i {
+            0 => vertex.position = val
+            1 => vertex.texture = val
+            2 => vertex.normal = val
+            else => {}
+        }
+        i++
+    }
+    return vertex
+}
+
+struct Parser {
+    vertices: &Vector<Vec3f>
+    normals: &Vector<Vec3f>
+    texcoords: &Vector<Vec2f>
+}
+
+def Parser::make_triangle(&this, v0: Vertex, v1: Vertex, v2: Vertex): Triangle {
+    let tri: Triangle
+    tri.v0 = .vertices[v0.position - 1]
+    tri.v1 = .vertices[v1.position - 1]
+    tri.v2 = .vertices[v2.position - 1]
+
+    if v0.normal != 0 {
+        assert v1.normal != 0 and v2.normal != 0
+        tri.n0 = .normals[v0.normal - 1]
+        tri.n1 = .normals[v1.normal - 1]
+        tri.n2 = .normals[v2.normal - 1]
+    } else {
+        let n = (tri.v1 - tri.v0).cross(tri.v2 - tri.v0).normalized()
+        tri.n0 = n
+        tri.n1 = n
+        tri.n2 = n
+    }
+
+    if v0.texture != 0 {
+        assert v1.texture != 0 and v2.texture != 0
+        tri.t0 = .texcoords[v0.texture - 1]
+        tri.t1 = .texcoords[v1.texture - 1]
+        tri.t2 = .texcoords[v2.texture - 1]
+    } else {
+        tri.t0 = Vec2f(0.0, 0.0)
+        tri.t1 = Vec2f(1.0, 0.0)
+        tri.t2 = Vec2f(0.0, 1.0)
+    }
+
+    tri.bounds = Bounds::empty() + tri.v0 + tri.v1 + tri.v2
+    return tri
+}
+
+def Parser::parse(&this, filename: str): &Vector<&Triangle> {
+    let data = fs::read_file(filename).sv()
+    let triangles = Vector<&Triangle>::new()
+
+    for line : data.lines() {
+        if line.starts_with_str("#") continue
+        if line.is_empty() continue
+
+        let op = line.chop_by_delim(' ')
+        if op == "v" {
+            let v = Vec3f(
+                line.chop_f32(),
+                line.chop_f32(),
+                line.chop_f32(),
+            )
+            .vertices.push(v)
+        }
+
+        if op == "vn" {
+            let n = Vec3f(
+                line.chop_f32(),
+                line.chop_f32(),
+                line.chop_f32(),
+            )
+            .normals.push(n)
+        }
+
+        if op == "vt" {
+            let t = Vec2f(
+                line.chop_f32(),
+                line.chop_f32(),
+            )
+            .texcoords.push(t)
+        }
+
+        if op == "f" {
+            let v0 = get_vertex_from_part(line.chop_word())
+            let v1 = get_vertex_from_part(line.chop_word())
+            for word : line.split_words() {
+                let v2 = get_vertex_from_part(word)
+                let tri = std::new<Triangle>()
+                *tri = .make_triangle(v0, v1, v2)
+                triangles += tri
+                v1 = v2
+            }
+        }
+    }
+
+    .vertices.free()
+    .normals.free()
+    .texcoords.free()
+    return triangles
+}
+
+def parse(filename: str): &Vector<&Triangle> {
+    let parser = Parser(
+        vertices: Vector<Vec3f>::new(),
+        normals: Vector<Vec3f>::new(),
+        texcoords: Vector<Vec2f>::new(),
+    )
+    return parser.parse(filename)
+}

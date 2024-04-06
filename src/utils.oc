@@ -4,6 +4,7 @@ import std::random::{ randf32 }
 
 import @color::{ Color }
 import @ray::{ Ray }
+import @matrix::{ Matrix }
 
 [exits]
 def error(json: &Value, msg: str) {
@@ -50,4 +51,8 @@ def random_vec_in_unit_sphere(ray: &Ray): Vec3f {
 
 def random_vec_in_hemisphere(ray: &Ray, n: Vec3f): Vec3f {
     return (random_vec_in_unit_sphere(ray) + n).normalized()
+}
+
+def align_to(a: Vec3f, normal: Vec3f): Vec3f {
+    return Matrix::rotation_matrix_for(normal) * a
 }

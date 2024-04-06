@@ -28,6 +28,7 @@ def Transformed::intersect(&this, ray: &Ray, hit: &Hit): bool {
     let transformed_ray = Ray(
         .inv_transform * ray.origin,
         .inv_transform % ray.direction,
+        ray.max_dist,
         ray.rng,
     )
     let res = .object.intersect(&transformed_ray, hit)

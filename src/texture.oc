@@ -1,5 +1,5 @@
 import std::value::{ Value }
-import std::vec::{ Vec3f }
+import std::vec::{ Vec3f, Vec2f }
 import std::image::{ Image }
 
 import @color::{ Color }
@@ -17,11 +17,13 @@ def Texture::new(img: &Image): &Texture {
     return tex
 }
 
-def Texture::sample_color(&this, hit: &Hit): Color {
-    let u = hit.uv.x.clamp01() * (.img.width - 1) as f32
-    let v = hit.uv.y.clamp01() * (.img.height - 1) as f32
+def Texture::get(&this, t: Vec2f): Color {
+    let u = t.x.clamp01() * (.img.width - 1) as f32
+    let v = (1.0 - t.y.clamp01()) * (.img.height - 1) as f32
     return Color::from_img(.img.get_interpolated(u, v))
 }
+
+def Texture::sample_color(&this, hit: &Hit): Color => .get(hit.uv)
 
 def Texture::from_json(json: &Value): &Texture {
     json.ensure(String)

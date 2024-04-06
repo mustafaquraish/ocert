@@ -1,0 +1,90 @@
+import std::vec::{ Vec3f, Vec2f }
+import std::value::{ Value }
+
+import @objects::object::{ Object }
+import @ray::{ Ray }
+import @hit::{ Hit }
+import @bounds::{ Bounds }
+import @utils::{ vec_from_json }
+
+struct Triangle {
+    v0: Vec3f
+    v1: Vec3f
+    v2: Vec3f
+
+    n0: Vec3f
+    n1: Vec3f
+    n2: Vec3f
+
+    t0: Vec2f
+    t1: Vec2f
+    t2: Vec2f
+
+    bounds: Bounds
+}
+
+def Triangle::make(
+    v0: Vec3f, v1: Vec3f, v2: Vec3f,
+    n0: Vec3f, n1: Vec3f, n2: Vec3f,
+    t0: Vec2f, t1: Vec2f, t2: Vec2f,
+): Triangle {
+    let bounds = Bounds::empty() + v0 + v1 + v2
+    return Triangle(
+        v0, v1, v2,
+        n0, n1, n2,
+        t0, t1, t2,
+        bounds
+    )
+}
+
+def Triangle::make_simple(v0: Vec3f, v1: Vec3f, v2: Vec3f): Triangle {
+    let n = (v1 - v0).cross(v2 - v0).normalized()
+    return Triangle::make(
+        v0, v1, v2,
+        n, n, n,
+        Vec2f(0.0, 0.0), Vec2f(1.0, 0.0), Vec2f(0.0, 1.0)
+    )
+}
+
+def Triangle::new(v0: Vec3f, v1: Vec3f, v2: Vec3f): &Object {
+    let obj = Object::new(Triangle)
+    obj.u.tri = Triangle::make_simple(v0, v1, v2)
+    return obj
+}
+
+def Triangle::intersect(&this, ray: &Ray, hit: &Hit): bool {
+    let e0 = .v1 - .v0
+    let e1 = .v2 - .v0
+
+    let h = ray.direction.cross(e1)
+    let a1 = e0.dot(h)
+    if a1 == 0.0 return false;
+
+    let f = 1.0 / a1
+
+    let s = ray.origin - .v0
+    let v = f * s.dot(h)
+    if v < 0.0 or v > 1.0 return false;
+
+    let q = s.cross(e0)
+    let w = f * ray.direction.dot(q)
+    if w < 0.0 or v + w > 1.0 return false;
+
+    let t = f * e1.dot(q)
+    if t < 0.0001 or t > ray.max_dist return false;
+
+    let u = 1.0 - v - w;
+
+    hit.distance = t
+    hit.normal = u * .n0 + v * .n1 + w * .n2
+    hit.uv = .t0 * u + .t1 * v + .t2 * w
+    return true
+}
+
+def Triangle::from_json(json: &Value): &Object {
+    let vertices = json["vertices"]
+    let v0 = vec_from_json(vertices[0])
+    let v1 = vec_from_json(vertices[1])
+    let v2 = vec_from_json(vertices[2])
+    return Triangle::new(v0, v1, v2)
+}

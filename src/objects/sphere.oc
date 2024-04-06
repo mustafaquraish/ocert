@@ -19,29 +19,29 @@ def Sphere::new(center: Vec3f, radius: f32): &Object {
 }
 
 def Sphere::intersect(&this, ray: &Ray, hit: &Hit): bool {
-    let r = *ray
-    // println(f"[+] Intersecting sphere at {.center} with radius {.radius} with ray {r}")
     let oc = ray.origin - this.center
     let a = ray.direction.dot(ray.direction)
     let b = 2.0 * oc.dot(ray.direction)
-    let c = oc.dot(oc) - this.radius * this.radius
+    let c = oc.dot(oc) - .radius * .radius
     let discriminant = b * b - 4.0 * a * c
     if discriminant < 0.0 {
         return false
     }
 
-    let t = (-b - discriminant.sqrt()) / (2.0 * a)
-    if t < 0.0 {
-        return false
-    }
+    let root = discriminant.sqrt()
+    let t1 = (-b - root) / (2.0 * a)
 
-    hit.distance = t
-    hit.position = ray.at(t)
-    hit.normal = (hit.position - .center) / .radius
-    hit.uv = Vec2f(
-        0.5 + f32::atan2(hit.normal.z, hit.normal.x) / (2.0 * std::math::PI),
-        0.5 - f32::asin(hit.normal.y) / std::math::PI
-    )
+    if t1 > ray.max_dist return false
+    if t1 < 0.0001 then t1 = (-b + root) / (2.0 * a)
+    if t1 < 0.0001 return false
+
+    hit.distance = t1
+    hit.position = ray.at(t1)
+    let normal = (hit.position - .center) / .radius
+    hit.normal = normal
+    hit.uv.x = 0.5 + normal.z.atan2(normal.x) / std::math::TAU
+    hit.uv.y = 0.5 + normal.y.asin() / std::math::PI
+    ray.max_dist = t1
     return true
 }
 
@@ -56,6 +56,5 @@ def Sphere::from_json(json: &Value): &Object {
     } else {
         yield 1.0
     }
-    println(f"[+] Creating sphere at {center} with radius {radius}")
     return Sphere::new(center, radius)
 }

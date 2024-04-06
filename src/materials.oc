@@ -1,5 +1,6 @@
 import std::value::{ Value }
 import std::vec::{ Vec3f }
+import std::random::{ randf32 }
 
 import @color::{ Color }
 import @hit::{ Hit }
@@ -18,15 +19,50 @@ struct Material {
     type: MaterialType
     texture: &Texture
     color: Color
+    ior: f32
 }
 
 def Material::is_light(&this): bool => .type == Light
 
+def Material::refract(&this, ray: &Ray, hit: &Hit): Vec3f {
+    let n = hit.normal
+    let d = ray.direction
+
+    let etaI = 1.0
+    let etaT = .ior
+    let cosThetaI = -n.dot(d)
+
+    if cosThetaI < 0.0 {
+        let temp = etaI; etaI = etaT; etaT = temp
+        n = n * -1.0
+        cosThetaI = -cosThetaI
+    }
+
+    let eta = etaI / etaT
+    let disc = 1.0 - eta*eta * (1.0 - cosThetaI*cosThetaI)
+
+    // Check for total internal reflection
+    if (disc < 0.0) return d.reflect(n)
+
+    let cosThetaT = disc.sqrt()
+
+    // Compute fresnel equations:
+    let Rs = (etaI * cosThetaI - etaT * cosThetaT) / (etaI * cosThetaI + etaT * cosThetaT)
+    let Rp = (etaT * cosThetaI - etaI * cosThetaT) / (etaT * cosThetaI + etaI * cosThetaT)
+    let reflectPct = (Rs * Rs + Rp * Rp) / 2.0
+
+    // Reflect with probability computed
+    if (randf32(ray.rng) < reflectPct) return d.reflect(n)
+
+    // Compute refracted direction
+    return eta * d + (eta * cosThetaI - cosThetaT) * n
+}
+
 def Material::sample_direction(&this, ray: &Ray, hit: &Hit): Vec3f => match .type {
     Diffuse => random_vec_in_hemisphere(ray, hit.normal),
     Reflect => ray.direction.reflect(hit.normal),
-    Refract => std::panic("Not implemented Refract in Material::sample_direction")
-    Light => std::panic("Not implemented Light in Material::sample_direction")
+    // Refract => .refract(ray, hit)
+    else => std::panic("Not implemented Light in Material::sample_direction")
 }
 
 def Material::sample_color(&this, hit: &Hit): Color {
@@ -66,6 +102,16 @@ def Material::from_json(json: &Value): &Material {
         "light" => Light
         else => error(json, "Unknown material type")
     }
+
+    if mat.type == Refract {
+        if json.contains("ior") {
+            mat.ior = json["ior"].as_float() as f32
+        } else {
+            mat.ior = 1.5
+            println(f"{json.span.start}: Warning: IOR not specified, using default value of 1.5")
+        }
+    }
+
     if json.contains("texture") {
         mat.texture = Texture::from_json(json["texture"])
     } else if json.contains("color") {
