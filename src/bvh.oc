@@ -1,6 +1,6 @@
 import std::vec::{ Vec3f, Vec2f }
 import std::vector::{ Vector }
-import std::sort::{ sort_by }
+import std::sort::{ sort_by, partition_by, nth_element_by }
 
 import @bounds::{ Bounds }
 import @ray::{ Ray }
@@ -49,22 +49,16 @@ def BVHTree::compare_equal(a: T, b: T): i8 {
     return ka.compare(kb)
 }
 
-def BVHTree::compare_sah_key(p: T): u32 {
-    let off = bounds.offset(p.bounds.centroid())
+def BVHTree::compare_sah(a: T): bool {
+    let off = bounds.offset(a.bounds.centroid())
     let bucket = (NUM_BUCKETS as f32 * off[compare_axis]) as u32
     if (bucket == NUM_BUCKETS) bucket = NUM_BUCKETS - 1
-    return bucket
-}
-
-def BVHTree::compare_sah(a: T, b: T): i8 {
-    let ka = BVHTree<T>::compare_sah_key(a)
-    let kb = BVHTree<T>::compare_sah_key(b)
-    return ka.compare(kb)
+    return bucket <= min_bucket
 }
 
 def BVHTree::split_equal(objects: &Vector<T>, start: u32, end: u32, bounds: Bounds): u32 {
     let mid = (start + end) / 2
-    sort_by<T>(objects.data + start, end - start, BVHTree<T>::compare_equal)
+    nth_element_by<T>(objects.data + start, end - start, mid, BVHTree<T>::compare_equal)
     return mid
 }
 
@@ -111,17 +105,7 @@ def BVHTree::split_SAH(objects: &Vector<T>, start: u32, end: u32, _bounds: Bound
     }
     min_bucket = _min_bucket
 
-
-    sort_by<T>(objects.data + start, end - start, BVHTree<T>::compare_sah)
-    let mid = start
-    for let i = start; i < end; ++i {
-        if BVHTree<T>::compare_sah_key(objects[i]) <= min_bucket {
-            let tmp = objects[i]
-            objects[i] = objects[mid]
-            objects[mid] = tmp
-            mid += 1
-        }
-    }
+    let mid = start + partition_by<T>(objects.data + start, end - start, BVHTree<T>::compare_sah)
     // auto pmid = std::partition(&prims[start], &prims[end],
     //                             [=](const Primitive* p) {
     //                                 Vec3 off = bounds.offset(centroid(p->bounds));
@@ -134,7 +118,7 @@ def BVHTree::split_SAH(objects: &Vector<T>, start: u32, end: u32, _bounds: Bound
     // TODO: this is bad, but currently no support for multiple objects in node
     if (mid == start or mid == end) 
         mid = BVHTree<T>::split_equal(objects, start, end, bounds)
-    
+
     return mid;
 }
 

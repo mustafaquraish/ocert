@@ -69,7 +69,8 @@ def Object::intersect(&this, ray: &Ray, hit: &Hit): bool {
 def Object::sample_point(&this, ray: &Ray, pdf: &f32): Vec3f => match .type {
     Plane => .u.plane.sample_point(ray, pdf)
     Transformed => .u.transformed.sample_point(ray, pdf)
-    else => std::panic("Sampling not supported for this object type")
+    Sphere => .u.sphere.sample_point(ray, pdf)
+    else => std::panic(f"Sampling not supported for this object type: {.type}")
 }
 
 def Object::from_json(json: &Value): &Object {

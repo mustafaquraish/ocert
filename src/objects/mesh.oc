@@ -5,6 +5,7 @@ import std::vector::{ Vector }
 import @objects::object::{ Object }
 import @objects::triangle::{ Triangle }
 import @ray::{ Ray }
+import @timer::{ Timer }
 import @hit::{ Hit }
 import @utils::{ vec_from_json }
 import @bvh::{ BVH }
@@ -38,6 +39,8 @@ def Mesh::intersect(&this, ray: &Ray, hit: &Hit): bool {
 
 def Mesh::from_json(json: &Value): &Object {
     let filename = json["obj"].as_str().str()
+    let timer = Timer::start(`Loading mesh from {filename}`)
     let triangles = wavefront_obj::parse(filename)
+    timer.stop()
     return Mesh::new(triangles)
 }

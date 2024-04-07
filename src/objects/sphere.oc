@@ -4,7 +4,7 @@ import std::value::{ Value }
 import @objects::object::{ Object }
 import @ray::{ Ray }
 import @hit::{ Hit }
-import @utils::{ vec_from_json }
+import @utils::{ vec_from_json, random_vec_in_unit_sphere }
 
 struct Sphere {
     center: Vec3f
@@ -43,6 +43,12 @@ def Sphere::intersect(&this, ray: &Ray, hit: &Hit): bool {
     hit.uv.y = 0.5 + normal.y.asin() / std::math::PI
     ray.max_dist = t1
     return true
+}
+
+def Sphere::sample_point(&this, ray: &Ray, pdf: &f32): Vec3f {
+    let res = random_vec_in_unit_sphere(ray)
+    *pdf = 1.0 / (4.0 * std::math::PI * .radius * .radius)
+    return .center + res * .radius
 }
 
 def Sphere::from_json(json: &Value): &Object {

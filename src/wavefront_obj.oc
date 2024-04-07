@@ -77,42 +77,22 @@ def Parser::parse(&this, filename: str): &Vector<&Triangle> {
         if line.is_empty() continue
 
         let op = line.chop_by_delim(' ')
-        if op == "v" {
-            let v = Vec3f(
-                line.chop_f32(),
-                line.chop_f32(),
-                line.chop_f32(),
-            )
-            .vertices.push(v)
-        }
-
-        if op == "vn" {
-            let n = Vec3f(
-                line.chop_f32(),
-                line.chop_f32(),
-                line.chop_f32(),
-            )
-            .normals.push(n)
-        }
-
-        if op == "vt" {
-            let t = Vec2f(
-                line.chop_f32(),
-                line.chop_f32(),
-            )
-            .texcoords.push(t)
-        }
-
-        if op == "f" {
-            let v0 = get_vertex_from_part(line.chop_word())
-            let v1 = get_vertex_from_part(line.chop_word())
-            for word : line.split_words() {
-                let v2 = get_vertex_from_part(word)
-                let tri = std::new<Triangle>()
-                *tri = .make_triangle(v0, v1, v2)
-                triangles += tri
-                v1 = v2
+        match op {
+            "v" => .vertices.push(Vec3f(line.chop_f32(), line.chop_f32(), line.chop_f32()))
+            "vn" => .normals.push(Vec3f(line.chop_f32(), line.chop_f32(), line.chop_f32()))
+            "vt" => .texcoords.push(Vec2f(line.chop_f32(), line.chop_f32()))
+            "f" => {
+                let v0 = get_vertex_from_part(line.chop_word())
+                let v1 = get_vertex_from_part(line.chop_word())
+                for word : line.split_words() {
+                    let v2 = get_vertex_from_part(word)
+                    let tri = std::new<Triangle>()
+                    *tri = .make_triangle(v0, v1, v2)
+                    triangles += tri
+                    v1 = v2
+                }
             }
+            else => {}
         }
     }
 

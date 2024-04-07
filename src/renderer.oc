@@ -79,10 +79,6 @@ def trace(scene: &Scene, ray: Ray): Color {
         if not material.is_specular() {
             L += acc * sample_light(scene, &ray, &hit, &sampled_light)
         }
-        // // Non light-sampling
-        // if material.is_light() {
-        //     return acc * material.sample_color(&ray, &hit)
-        // }
 
         acc *= material.sample(&ray, &hit)
 
@@ -131,8 +127,8 @@ def render(scene: &Scene): &Image {
     let progress = ProgressBar::make("Rendering", height)
 
     OMP_PARALLEL_FOR
-    for let i = 0; i < width; i++ {
-        for let j = 0; j < height; j++ {
+    for let j = 0; j < height; j++ {
+        for let i = 0; i < width; i++ {
             let rng = RandomState::make()
             let color = Color::black()
             for let s = 0; s < samples; s++ {
@@ -145,9 +141,5 @@ def render(scene: &Scene): &Image {
         progress.update(1)
     }
     timer.stop()
-    // let ray = scene.camera.get_ray(256, 450)
-    // println(`Got ray: {ray}`)
-    // let color = trace(scene, ray)
-    // println(`Got color: {color}`)
     return image
 }

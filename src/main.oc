@@ -3,6 +3,7 @@ import std::sv::{ SV }
 
 import @scene::{ Scene }
 import @renderer::{ render }
+import @timer::{ Timer }
 
 // vroom vroom
 @compiler c_flag "-Ofast -ffast-math -ftree-vectorize -msse2 -mfpmath=sse -flto=full -march=native"
@@ -33,32 +34,41 @@ def main(argc: i32, argv: &str) {
     }
     let scene_json = json::parse_from_file(scene_file)
 
-    let output_name = "output.qoi"
-    // while argc > 0 {
-    //     let option = shift_args(&argc, &argv)
-    //     match option {
-    //         "-o" | "--output" => output_name = shift_args(&argc, &argv),
-    //         "-r" | "--resolution" => {
-    //             let arg = SV::from_str(shift_args(&argc, &argv))
-    //             let sx = arg.chop_u32()
-    //             let sy = sx  // By default, we assume square images
-    //             if not arg.is_empty() {
-    //                 if arg.data[0] == 'x' {
-    //                     println(f"Invalid resolution {argv[-1]}")
-    //                     std::exit(1)
-    //                 }
-    //                 arg.chop_left()
-    //                 sy = arg.chop_u32()
-    //             }
-    //         },
-    //         else => {
-    //             println(f"Unknown option {option}")
-    //             std::exit(1)
-    //         }
-    //     }
-    // }
+    let output_name = "output.png"
+    while argc > 0 {
+        let option = shift_args(&argc, &argv)
+        match option {
+            "-o" | "--output" => output_name = shift_args(&argc, &argv),
+            "-r" | "--resolution" => {
+                let arg = SV::from_str(shift_args(&argc, &argv))
+                let sx = arg.chop_u32()
+                let sy = sx  // By default, we assume square images
+                if not arg.is_empty() {
+                    if arg.data[0] != 'x' {
+                        println(f"Invalid resolution {argv[-1]}")
+                        std::exit(1)
+                    }
+                    arg.chop_left()
+                    sy = arg.chop_u32()
+                }
+                scene_json["camera"]["width"] = sx
+                scene_json["camera"]["height"] = sy
+            },
+            "-s" | "--samples" => {
+                let samples = shift_args(&argc, &argv).to_u32()
+                scene_json["camera"]["samples"] = samples
+            },
+            else => {
+                println(f"Unknown option {option}")
+                std::exit(1)
+            }
+        }
+    }
 
     let scene = Scene::from_json(scene_json)
     let image = render(scene)
+
+    let timer = Timer::start(`Saving '{output_name}'`)
     image.save(output_name)
+    timer.stop()
 }
