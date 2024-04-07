@@ -4,6 +4,7 @@ import std::vec::{ Vec3f }
 import std::image::{ Image, Color as ImageColor }
 import std::random::{ randf32, randu32, RandomState }
 
+import @progress::{ ProgressBar }
 import @matrix::{ Matrix }
 import @scene::{ Scene }
 import @objects::object::{ Object }
@@ -93,7 +94,7 @@ def trace(scene: &Scene, ray: Ray): Color {
         }
 
         ray = Ray(
-            hit.position + hit.normal * 0.001,
+            hit.position,
             hit.next_dir,
             f32::inf(),
             ray.rng
@@ -116,8 +117,8 @@ def to_image_color(col: Color): ImageColor {
 }
 
 // This is a super-ugly hack to allow us to use C-preprocessor macros
-[extern "#pragma omp parallel for schedule(dynamic, 120)"]
-let OMP_PARALLEL_FOR_DYNAMIC_SCHEDULE: i32
+[extern "#pragma omp parallel for schedule(static, 1)"]
+let OMP_PARALLEL_FOR: i32
 
 def render(scene: &Scene): &Image {
     let width = scene.camera.width
@@ -127,8 +128,9 @@ def render(scene: &Scene): &Image {
 
     println(f"[+] Rendering {width}x{height} image with {samples} samples per pixel")
     let timer = Timer::start("Rendering")
+    let progress = ProgressBar::make("Rendering", height)
 
-    OMP_PARALLEL_FOR_DYNAMIC_SCHEDULE
+    OMP_PARALLEL_FOR
     for let i = 0; i < width; i++ {
         for let j = 0; j < height; j++ {
             let rng = RandomState::make()
@@ -140,6 +142,7 @@ def render(scene: &Scene): &Image {
             color /= samples as f32
             image.set(i, j, to_image_color(color))
         }
+        progress.update(1)
     }
     timer.stop()
     // let ray = scene.camera.get_ray(256, 450)

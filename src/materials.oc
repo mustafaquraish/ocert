@@ -61,7 +61,7 @@ def Material::refract(&this, ray: &Ray, hit: &Hit): Vec3f {
 def Material::sample_direction(&this, ray: &Ray, hit: &Hit): Vec3f => match .type {
     Diffuse => random_vec_in_hemisphere(ray, hit.normal),
     Reflect => ray.direction.reflect(hit.normal),
-    // Refract => .refract(ray, hit)
+    Refract => .refract(ray, hit)
     else => std::panic("Not implemented Light in Material::sample_direction")
 }
 

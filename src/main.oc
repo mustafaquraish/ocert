@@ -5,7 +5,7 @@ import @scene::{ Scene }
 import @renderer::{ render }
 
 // vroom vroom
-@compiler c_flag "-O3 -ffast-math -ftree-vectorize -msse2 -mfpmath=sse -flto -march=native"
+@compiler c_flag "-Ofast -ffast-math -ftree-vectorize -msse2 -mfpmath=sse -flto=full -march=native"
 @compiler c_flag "-Xpreprocessor -fopenmp -lomp -Wno-extra-tokens"
 
 def shift_args(argc: &i32, argv: &&str): str {

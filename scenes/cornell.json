@@ -1,0 +1,107 @@
+{
+    "objects": [
+        {
+            "type": "sphere",
+            "material": {
+                "type": "diffuse",
+                "color": [0.95, 0.95, 0.95]
+            },
+            "transforms": [
+                { "scale": [500, 500, 500] },
+                { "translate": [0, 0, 515] }
+            ]
+        },
+        {
+            "type": "sphere",
+            "material": {
+                "type": "diffuse",
+                "color": [0.25, 0.25, 0.75]
+            },
+            "transforms": [
+                { "scale": [500, 500, 500] },
+                { "rotate_y": 90 },
+                { "translate": [510, 0, 5] }
+            ]
+        },
+        {
+            "type": "sphere",
+            "material": {
+                "type": "diffuse",
+                "color": [0.75, 0.25, 0.25]
+            },
+            "transforms": [
+                { "scale": [500, 500, 500] },
+                { "rotate_y": -90 },
+                { "translate": [-510, 0, 5] }
+            ]
+        },
+        {
+            "type": "sphere",
+            "material": {
+                "type": "diffuse",
+                "color": [0.75, 0.75, 0.75]
+            },
+            "transforms": [
+                { "scale": [500, 500, 500] },
+                { "rotate_x": -90 },
+                { "translate": [0, -510, 5] }
+            ]
+        },
+        {
+            "type": "sphere",
+            "material": {
+                "type": "diffuse",
+                "color": [0.75, 0.75, 0.75]
+            },
+            "transforms": [
+                { "scale": [500, 500, 500] },
+                { "rotate_x": 90 },
+                { "translate": [0, 510, 5] }
+            ]
+        },
+        {
+            "type": "sphere",
+            "material": {
+                "type": "refract",
+                "ior": 1.47,
+                "color": [1, 1, 1]
+            },
+            "transforms": [
+                { "scale": [3.75, 3.75, 3.75] },
+                { "translate": [-5, -4, 4.5] }
+            ]
+        },
+        {
+            "type": "sphere",
+            "material": {
+                "type": "reflect",
+                "color": [0.99, 0.99, 0.99]
+            },
+            "transforms": [
+                { "scale": [3.75, 3.75, 3.75] },
+                { "translate": [4, -3.75, 6.5] }
+            ]
+        },
+        {
+            "type": "plane",
+            "material": {
+                "type": "light",
+                "color": [12, 12, 12]
+            },
+            "transforms": [
+                { "scale": [0.5, 2.5, 10] },
+                { "rotate_x": 90 },
+                { "translate": [0, 9.9995, 5] }
+            ]
+        }
+    ],
+    // "env_map": "assets/snow.qoi",
+    "camera": {
+        "position": [0, 0, -15],
+        "gaze": [0, 0, 1],
+        "fov": 70,
+        "width": 512,
+        "height": 512,
+        "samples": 100
+    }
+}
