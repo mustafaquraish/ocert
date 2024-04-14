@@ -32,32 +32,30 @@ def max_axis(v: Vec3f): u32 {
     return axis;
 }
 
-def get_index(v: Vec3f, axis: u32): f32 {
-    if axis == 0 { return v.x; }
-    if axis == 1 { return v.y; }
-    return v.z;
+// State we need to keep track of during the sort/nth_element/parition
+// operations, but we can't pass as arguments to the comparison functions
+namespace sort_state {
+    let compare_axis: u32 = 0
+    let min_bucket: u32 = 0
+    let bounds: Bounds
 }
 
-// FIXME: Hacky global variable lol
-let compare_axis: u32 = 0
-let min_bucket: u32 = 0
-let bounds: Bounds
-
 def BVHTree::compare_equal(a: T, b: T): i8 {
-    let ka = get_index(a.bounds.min + a.bounds.max, compare_axis)
-    let kb = get_index(b.bounds.min + b.bounds.max, compare_axis)
+    let ka = (a.bounds.min + a.bounds.max)[sort_state::compare_axis]
+    let kb = (b.bounds.min + b.bounds.max)[sort_state::compare_axis]
     return ka.compare(kb)
 }
 
 def BVHTree::compare_sah(a: T): bool {
-    let off = bounds.offset(a.bounds.centroid())
-    let bucket = (NUM_BUCKETS as f32 * off[compare_axis]) as u32
+    let off = sort_state::bounds.offset(a.bounds.centroid())
+    let bucket = (NUM_BUCKETS as f32 * off[sort_state::compare_axis]) as u32
     if (bucket == NUM_BUCKETS) bucket = NUM_BUCKETS - 1
-    return bucket <= min_bucket
+    return bucket <= sort_state::min_bucket
 }
 
-def BVHTree::split_equal(objects: &Vector<T>, start: u32, end: u32, bounds: Bounds): u32 {
+def BVHTree::split_equal(objects: &Vector<T>, start: u32, end: u32, bounds: Bounds, axis: u32): u32 {
     let mid = (start + end) / 2
+    sort_state::compare_axis = axis
     nth_element_by<T>(objects.data + start, end - start, mid, BVHTree<T>::compare_equal)
     return mid
 }
@@ -69,12 +67,11 @@ struct Bucket {
     bounds: Bounds
 }
 
-def BVHTree::split_SAH(objects: &Vector<T>, start: u32, end: u32, _bounds: Bounds): u32 {
+def BVHTree::split_SAH(objects: &Vector<T>, start: u32, end: u32, bounds: Bounds, axis: u32): u32 {
     let buckets: [Bucket; NUM_BUCKETS]
 
-    bounds = _bounds
     for let i = start; i < end; i++ {
-        let b = (NUM_BUCKETS as f32 * bounds.offset(objects[i].bounds.centroid())[compare_axis]) as u32
+        let b = (NUM_BUCKETS as f32 * bounds.offset(objects[i].bounds.centroid())[axis]) as u32
         if (b == NUM_BUCKETS) b = NUM_BUCKETS - 1
         buckets[b].count += 1
         buckets[b].bounds = buckets[b].bounds.join(objects[i].bounds)
@@ -97,27 +94,21 @@ def BVHTree::split_SAH(objects: &Vector<T>, start: u32, end: u32, _bounds: Bound
         cost[i] = 0.125 + (c0 as f32 * b0.area() + c1 as f32 * b1.area()) / bounds.area();
     }
 
-    let _min_bucket = 0;
+    let min_bucket = 0;
     for let i = 1; i < NUM_BUCKETS - 1; ++i {
-        if (cost[i] < cost[_min_bucket]) {
-            _min_bucket = i;
+        if cost[i] < cost[min_bucket] {
+            min_bucket = i;
         }
     }
-    min_bucket = _min_bucket
 
+    sort_state::bounds = bounds
+    sort_state::compare_axis = axis
+    sort_state::min_bucket = min_bucket
     let mid = start + partition_by<T>(objects.data + start, end - start, BVHTree<T>::compare_sah)
-    // auto pmid = std::partition(&prims[start], &prims[end],
-    //                             [=](const Primitive* p) {
-    //                                 Vec3 off = bounds.offset(centroid(p->bounds));
-    //                                 int bucket = nBuckets * off[dim];
-    //                                 if (bucket == nBuckets) bucket = nBuckets - 1;
-    //                                 return bucket <= minBucket;
-    //                             });
-    // int mid = pmid - &prims[0];
 
     // TODO: this is bad, but currently no support for multiple objects in node
     if (mid == start or mid == end) 
-        mid = BVHTree<T>::split_equal(objects, start, end, bounds)
+        mid = BVHTree<T>::split_equal(objects, start, end, bounds, axis)
 
     return mid;
 }
@@ -137,10 +128,9 @@ def BVHTree::create_with_bounds(objects: &Vector<T>, start: u32, end: u32): &BVH
         return node
     }
 
-    // Set hacky global variable
-    compare_axis = max_axis(bounds.max - bounds.min)
-    // let mid = BVHTree<T>::split_equal(objects, start, end, bounds)
-    let mid = BVHTree<T>::split_SAH(objects, start, end, bounds)
+    let axis = max_axis(bounds.max - bounds.min)
+    // let mid = BVHTree<T>::split_equal(objects, start, end, bounds, axis)
+    let mid = BVHTree<T>::split_SAH(objects, start, end, bounds, axis)
 
     node.left = BVHTree<T>::create_with_bounds(objects, start, mid)
     node.right = BVHTree<T>::create_with_bounds(objects, mid, end)
