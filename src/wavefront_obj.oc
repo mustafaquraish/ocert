@@ -2,6 +2,7 @@ import std::fs
 import std::vector::{ Vector }
 import std::vec::{ Vec3f, Vec2f }
 import std::sv::{ SV }
+import std::mem
 
 import @bounds::{ Bounds }
 import @objects::triangle::{ Triangle }
@@ -86,7 +87,7 @@ def Parser::parse(&this, filename: str): &Vector<&Triangle> {
                 let v1 = get_vertex_from_part(line.chop_word())
                 for word : line.split_words() {
                     let v2 = get_vertex_from_part(word)
-                    let tri = std::new<Triangle>()
+                    let tri = mem::alloc<Triangle>()
                     *tri = .make_triangle(v0, v1, v2)
                     triangles += tri
                     v1 = v2

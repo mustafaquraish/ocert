@@ -1,6 +1,7 @@
 import std::vector::{ Vector }
 import std::vec::{ Vec2f }
 import std::value::{ Value }
+import std::mem
 
 import @objects::object::{ Object }
 import @camera::{ Camera }
@@ -25,7 +26,7 @@ struct Scene {
 }
 
 def Scene::new(): &Scene {
-    let scene = std::new<Scene>()
+    let scene = mem::alloc<Scene>()
     scene.objects = Vector<&Object>::new()
     scene.lights = Vector<&Object>::new()
     return scene

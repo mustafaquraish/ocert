@@ -2,6 +2,7 @@ import std::vec::{ Vec3f }
 import std::math::{ radians }
 import std::value::{ Value }
 import std::random::{ RandomState }
+import std::mem
 
 import @utils::{ vec_from_json, error }
 import @matrix::{ Matrix }
@@ -18,7 +19,7 @@ struct Camera {
 }
 
 def Camera::new(position: Vec3f, gaze: Vec3f, up: Vec3f, fov: f32, width: u32, height: u32, samples: u32): &Camera {
-    let cam = std::new<Camera>()
+    let cam = mem::alloc<Camera>()
 
     cam.position = position
     let w = gaze.mults(-1.0).normalized()

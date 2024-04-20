@@ -1,6 +1,7 @@
 import std::vec::{ Vec3f, Vec2f }
 import std::vector::{ Vector }
 import std::sort::{ sort_by, partition_by, nth_element_by }
+import std::mem
 
 import @bounds::{ Bounds }
 import @ray::{ Ray }
@@ -114,7 +115,7 @@ def BVHTree::split_SAH(objects: &Vector<T>, start: u32, end: u32, bounds: Bounds
 }
 
 def BVHTree::create_with_bounds(objects: &Vector<T>, start: u32, end: u32): &BVHTree<T> {
-    let node = std::new<BVHTree<T>>()
+    let node = mem::alloc<BVHTree<T>>()
 
     let bounds = Bounds::empty()
     for let i = start; i < end; i++ {
@@ -181,7 +182,7 @@ def BVH::flatten(&this, node: &BVHTree<T>): u32 {
 
 def BVH::create(objects: &Vector<T>): &BVH<T> {
     let tree = BVHTree<T>::create(objects)
-    let bvh = std::new<BVH<T>>()
+    let bvh = mem::alloc<BVH<T>>()
     bvh.objects = Vector<T>::new()
     bvh.nodes = Vector<LinearNode>::new()
     bvh.flatten(tree)

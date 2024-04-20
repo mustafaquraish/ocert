@@ -1,6 +1,7 @@
 import std::value::{ Value }
 import std::vec::{ Vec3f }
 import std::random::{ randf32 }
+import std::mem
 
 import @color::{ Color }
 import @hit::{ Hit }
@@ -94,7 +95,7 @@ def Material::sample(&this, ray: &Ray, hit: &Hit): Color {
 def Material::from_json(json: &Value): &Material {
     json.ensure(Dictionary)
 
-    let mat = std::new<Material>()
+    let mat = mem::alloc<Material>()
     mat.type = match json["type"].as_str().str() {
         "diffuse" => Diffuse
         "reflect" => Reflect

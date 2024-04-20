@@ -1,6 +1,7 @@
 import std::value::{ Value }
 import std::vec::{ Vec3f, Vec2f }
 import std::image::{ Image }
+import std::mem
 
 import @color::{ Color }
 import @hit::{ Hit }
@@ -12,7 +13,7 @@ struct Texture {
 }
 
 def Texture::new(img: &Image): &Texture {
-    let tex = std::new<Texture>()
+    let tex = mem::alloc<Texture>()
     tex.img = img
     return tex
 }
